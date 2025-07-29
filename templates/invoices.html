@@ -1,0 +1,899 @@
+{% extends "base.html" %}
+
+{% block title %}Danh sách Hóa đơn{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    Danh sách Hóa đơn
+    <span id="totalInvoicesDisplay" class="badge bg-secondary ms-2"></span>
+</h2>
+
+<a href="/create-invoice-page" class="btn btn-primary mb-3">Tạo Hóa đơn mới</a>
+<button type="button" class="btn btn-success mb-3 ms-2" id="exportExcelBtn">
+    <i class="fas fa-file-excel"></i> Xuất Excel
+</button>
+
+<div class="card mb-4">
+    <div class="card-header">
+        Tìm kiếm Hóa đơn
+    </div>
+    <div class="card-body">
+        <form id="invoiceFilterForm" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="filterMahd" class="form-label">Mã HĐ:</label>
+                <input type="text" class="form-control" id="filterMahd" placeholder="Nhập mã hóa đơn">
+            </div>
+            <div class="col-md-3">
+                <label for="filterMakh" class="form-label">Khách hàng:</label>
+                <select class="form-control" id="filterMakh" style="width: 100%;">
+                    <option value="">-- Chọn khách hàng --</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="filterNgaylapFrom" class="form-label">Từ ngày:</label>
+                <input type="date" class="form-control" id="filterNgaylapFrom">
+            </div>
+            <div class="col-md-2">
+                <label for="filterNgaylapTo" class="form-label">Đến ngày:</label>
+                <input type="date" class="form-control" id="filterNgaylapTo">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-info w-100">Tìm kiếm</button>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-secondary w-100" id="clearFiltersBtn">Xóa bộ lọc</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>Mã HD</th>
+                <th>Khách hàng</th>
+                <th>Ngày lập</th>
+                <th>Tổng Tiền hàng</th>
+                <th>Tổng CK</th>
+                <th>Đã Thanh toán (HD)</th>
+                <th>Chưa thanh toán (HD)</th>
+                <th>Trạng thái</th>
+                <th>Người lập</th>
+                <th>Ghi chú</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody id="invoicesTableBody">
+            <tr>
+                <td colspan="11" class="text-center">Đang tải dữ liệu...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center" id="paginationControls">
+    </ul>
+</nav>
+
+{# Start of the first invoiceDetailModal content - this is the one we will modify #}
+<div class="modal fade" id="invoiceDetailModal" tabindex="-1" aria-labelledby="invoiceDetailModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="invoiceDetailModalLabel">Chi tiết Hóa đơn: <span
+                        id="modalInvoiceMahd"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="invoice-info-header">
+                            <p class="mb-1"><strong>Mã HD:</strong> <span id="detailMahd"></span></p>
+                            <p class="mb-1"><strong>Khách hàng:</strong> <span id="detailTenkh"></span></p>
+                            <p class="mb-1"><strong>Ngày lập:</strong> <span id="detailNgaylap"></span></p>
+                            <p class="mb-1"><strong>Người lập:</strong> <span id="detailNguoilap"></span></p>
+
+                            {# SỬA ĐỔI CHỖ NÀY ĐỂ HIỂN THỊ MÀU SẮC TRẠNG THÁI #}
+                            <p class="mb-1"><strong>Trạng thái:</strong> <span id="detailTrangthai"
+                                    class="status-badge"></span></p>
+
+                            <p class="mb-1"><strong>Ghi chú:</strong> <span id="detailGhichu"></span></p>
+                            <p class="mb-1 cancel-info" style="display:none;"><strong>Ngày hủy:</strong> <span
+                                    id="detailNgayHuy"></span></p>
+                            <p class="mb-1 cancel-info" style="display:none;"><strong>Người hủy:</strong> <span
+                                    id="detailNguoiHuy"></span></p>
+                            <p class="mb-1 replace-info" style="display:none;"><strong>Mã HD thay thế:</strong> <span
+                                    id="detailMahdThayThe"></span></p>
+
+                            {# THÊM HAI DÒNG NÀY VÀO ĐÂY #}
+                            <p class="mb-1"><strong>Ngày tạo bản ghi:</strong> <span id="detailCreatedAt"></span></p>
+                            <p class="mb-1"><strong>Cập nhật cuối:</strong> <span id="detailUpdatedAt"></span></p>
+
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="summary-totals text-end">
+                            <div class="summary-line">
+                                <span class="summary-label">Tổng Tiền hàng:</span>
+                                <span class="summary-value" id="detailCongtienhang"></span>
+                            </div>
+                            <div class="summary-line">
+                                <span class="summary-label">Tổng Chiết khấu:</span>
+                                <span class="summary-value" id="detailCongchietkhau"></span>
+                            </div>
+                            <div class="summary-line">
+                                <span class="summary-label">Khách đã thanh toán (Hóa đơn):</span>
+                                <span class="summary-value" id="detailKhhdathanhtoan"></span>
+                            </div>
+                            <div class="summary-line total-debt">
+                                <span class="summary-label fw-bold">Chưa thanh toán (Hóa đơn):</span>
+                                <span class="summary-value fw-bold text-danger" id="detailConno"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6>Sản phẩm trong hóa đơn:</h6>
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th>TT</th>
+                            <th>Sản phẩm</th>
+                            <th>ĐVT</th>
+                            <th>SL</th>
+                            <th>Đơn giá</th>
+                            <th>CK (%)</th>
+                            <th>Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoiceDetailsTableBody">
+                    </tbody>
+                </table>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-warning" id="editInvoiceBtn">Chỉnh sửa</button>
+                <button type="button" class="btn btn-success" id="markPaidBtn">Ghi nhận thanh toán</button>
+                <button type="button" class="btn btn-info" id="printInvoiceBtn"><i class="fas fa-print"></i> In Hóa
+                    đơn</button>
+                <button type="button" class="btn btn-danger" id="cancelInvoiceModalBtn">Hủy hóa đơn</button>
+            </div>
+        </div>
+    </div>
+</div>
+{# End of the first invoiceDetailModal content #}
+
+
+<div class="modal fade" id="markPaidModal" tabindex="-1" aria-labelledby="markPaidModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="markPaidModalLabel">Ghi nhận thanh toán cho Hóa đơn <span
+                        id="payInvoiceMahd"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="payInvoiceForm">
+                    <input type="hidden" id="payInvoiceHiddenMahd">
+                    <p>Tổng nợ hiện tại của hóa đơn này: <strong id="currentInvoiceConno"></strong>
+                    </p>
+                    <div class="mb-3">
+                        <label for="paidAmount" class="form-label">Số tiền khách thanh toán thêm:</label>
+                        <input type="number" class="form-control" id="paidAmount" step="0.01" min="0" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Xác nhận thanh toán</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+
+<script>
+    let currentInvoiceForPay = null; // Biến để lưu mã hóa đơn khi ghi nhận thanh toán
+    let currentInvoiceDetails = null; // Biến để lưu toàn bộ chi tiết hóa đơn khi xem modal, dùng cho chỉnh sửa
+    // Khai báo các biến phân trang ở phạm vi toàn cục hoặc phạm vi ngoài các hàm
+    let currentPage = 1;      // Bắt đầu từ trang đầu tiên
+    const itemsPerPage = 20;  // Số lượng mục trên mỗi trang (phải khớp với limit trong FastAPI)
+    let totalInvoices = 0;    // Tổng số hóa đơn từ API (sẽ được cập nhật sau khi fetch)
+    let currentFilters = {};
+
+
+    function renderPaginationControls() {
+        const totalPages = Math.ceil(totalInvoices / itemsPerPage);
+        const paginationControls = $('#paginationControls');
+        paginationControls.empty(); // Xóa các nút cũ
+
+        if (totalPages <= 1) {
+            return; // Không cần phân trang nếu chỉ có 1 trang hoặc ít hơn
+        }
+
+        // Nút "Trước"
+        paginationControls.append(`<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentPage - 1}">Trước</a></li>`);
+
+        // Logic để hiển thị các nút số trang (bao gồm dấu "...")
+        const pageRange = 5; // Số lượng trang hiển thị xung quanh trang hiện tại
+        let startPage = Math.max(1, currentPage - Math.floor(pageRange / 2));
+        let endPage = Math.min(totalPages, currentPage + Math.ceil(pageRange / 2) - 1);
+
+        // Điều chỉnh startPage và endPage để luôn có pageRange số trang nếu có đủ
+        // Điều này giúp đảm bảo khi currentPage ở gần đầu hoặc cuối, vẫn hiển thị đúng số lượng nút
+        if (endPage - startPage + 1 < pageRange) {
+            if (currentPage - startPage < Math.floor(pageRange / 2)) {
+                endPage = Math.min(totalPages, startPage + pageRange - 1);
+            } else if (endPage - currentPage < Math.ceil(pageRange / 2) - 1) {
+                startPage = Math.max(1, endPage - pageRange + 1);
+            }
+        }
+
+        // Luôn hiển thị trang đầu tiên
+        if (startPage > 1) {
+            paginationControls.append(`<li class="page-item ${1 === currentPage ? 'active' : ''}"><a class="page-link" href="#" data-page="1">1</a></li>`);
+            if (startPage > 2) { // Chỉ hiển thị "..." nếu có ít nhất 2 trang bị bỏ qua sau trang 1
+                paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+            }
+        }
+
+        // Hiển thị các trang trong phạm vi tính toán
+        for (let i = startPage; i <= endPage; i++) {
+            let activeClass = i === currentPage ? 'active' : '';
+            paginationControls.append(`<li class="page-item ${activeClass}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`);
+        }
+
+        // Luôn hiển thị trang cuối cùng
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) { // Chỉ hiển thị "..." nếu có ít nhất 2 trang bị bỏ qua trước trang cuối
+                paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+            }
+            paginationControls.append(`<li class="page-item ${totalPages === currentPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a></li>`);
+        }
+
+        // Nút "Sau"
+        paginationControls.append(`<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentPage + 1}">Sau</a></li>`);
+
+        // Xử lý sự kiện click cho các nút phân trang
+        paginationControls.off('click', '.page-link').on('click', '.page-link', function (e) {
+            e.preventDefault();
+            const newPage = parseInt($(this).data('page'));
+            if (!isNaN(newPage) && newPage > 0 && newPage <= totalPages && newPage !== currentPage) {
+                currentPage = newPage;
+                // Đảm bảo fetchInvoices có thể nhận currentPage và currentFilters
+                fetchInvoices(currentFilters); // Gọi lại fetchInvoices với bộ lọc hiện tại
+            }
+        });
+    }
+    // Định nghĩa thứ tự ưu tiên cho các trạng thái
+    // Đảm bảo các giá trị khóa ('ChuaTT', 'DaTT', 'Huy') khớp với giá trị 'trangthai' mà backend trả về.
+    const statusSortPriority = {
+        'ChuaTT': 1,  // Ưu tiên cao nhất (xuất hiện đầu tiên)
+        'DaTT': 2,    // Ưu tiên trung bình
+        'Huy': 3,     // Ưu tiên thấp nhất (xuất hiện cuối cùng)
+        // Bạn có thể thêm các trạng thái khác nếu có và gán số ưu tiên lớn hơn
+    };
+
+    async function fetchInvoices(filters = {}) {
+        try {
+            const queryParams = new URLSearchParams();
+            if (filters.mahd) queryParams.append('mahd', filters.mahd);
+            if (filters.makh) queryParams.append('makh', filters.makh);
+            if (filters.ngaylap_from) queryParams.append('ngaylap_from', filters.ngaylap_from);
+            if (filters.ngaylap_to) queryParams.append('ngaylap_to', filters.ngaylap_to);
+
+            // Thêm tham số phân trang
+            queryParams.append('skip', (currentPage - 1) * itemsPerPage);
+            queryParams.append('limit', itemsPerPage);
+
+            // Backend của bạn đã có: .order_by(Invoice.ngaylap.desc())
+            // Nên KHÔNG CẦN thêm 'sort_by' và 'sort_order' vào queryParams ở đây nữa.
+            // Dữ liệu trả về từ API đã được sắp xếp theo ngày (mới nhất trước).
+
+            const url = `/invoices/?${queryParams.toString()}`;
+            console.log("Fetching invoices with URL:", url);
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('Failed to fetch invoices');
+            }
+            const data = await response.json(); // Nhận đối tượng có total_count và invoices
+            let invoices = data.invoices; // Lấy mảng invoices từ thuộc tính 'invoices' của đối tượng data
+            totalInvoices = data.total_count; // Cập nhật tổng số hóa đơn cho phân trang
+
+            // --- BẮT ĐẦU PHẦN SẮP XẾP CLIENT-SIDE THEO TRẠNG THÁI ---
+            // Sắp xếp mảng 'invoices' cục bộ
+            invoices.sort((a, b) => {
+                // Lấy giá trị trạng thái từ mỗi hóa đơn
+                // Backend của bạn trả về string ví dụ: 'ChuaTT', 'DaTT', 'Huy', nên không cần .value
+                const statusA = a.trangthai;
+                const statusB = b.trangthai;
+
+                // Lấy giá trị ưu tiên từ đối tượng statusSortPriority
+                // Nếu trạng thái không có trong statusSortPriority, gán một số lớn để nó xuống cuối
+                const priorityA = statusSortPriority[statusA] || 99;
+                const priorityB = statusSortPriority[statusB] || 99;
+
+                // So sánh ưu tiên trạng thái
+                if (priorityA < priorityB) {
+                    return -1; // a có ưu tiên cao hơn (số nhỏ hơn), a đứng trước b
+                }
+                if (priorityA > priorityB) {
+                    return 1;  // b có ưu tiên cao hơn (số nhỏ hơn), b đứng trước a
+                }
+
+                // Nếu trạng thái của a và b giống nhau (hoặc không có trong map):
+                // Duy trì thứ tự ban đầu của chúng, tức là thứ tự đã được backend sắp xếp theo ngày.
+                return 0;
+            });
+            // --- KẾT THÚC PHẦN SẮP XẾP CLIENT-SIDE THEO TRẠNG THÁI ---
+
+            $('#totalInvoicesDisplay').text(`(${totalInvoices} hóa đơn)`);
+            const tableBody = $('#invoicesTableBody');
+            tableBody.empty(); // Xóa thông báo đang tải
+
+            if (invoices.length === 0) {
+                tableBody.append('<tr><td colspan="11" class="text-center">Không tìm thấy hóa đơn nào phù hợp.</td></tr>');
+                // Nếu không có hóa đơn, xóa các nút phân trang
+                $('#paginationControls').empty();
+                return;
+            }
+
+            for (const invoice of invoices) {
+                const customerName = invoice.customer ? invoice.customer.tenkh : 'Không có khách hàng';
+
+                let statusClass = '';
+                let displayStatusText = '';
+
+                // --- Cập nhật logic SWITCH để khớp với giá trị từ API ---
+                switch (invoice.trangthai) { // Sử dụng trực tiếp invoice.trangthai vì nó đã là chuỗi
+                    case 'DaTT': // Backend trả về "DaTT"
+                        statusClass = 'text-success fw-bold';
+                        displayStatusText = 'DATT'; // Dịch sang DATT
+                        break;
+                    case 'Huy': // Backend trả về "Huy"
+                        statusClass = 'text-muted fst-italic';
+                        displayStatusText = 'HUY'; // Dịch sang HUY
+                        break;
+                    case 'ChuaTT': // Backend trả về "ChuaTT" (Đây cũng là default trong backend của bạn)
+                    default: // Nếu không khớp các trạng thái trên, coi là ChuaTT và gán mặc định
+                        statusClass = 'text-warning fw-bold';
+                        displayStatusText = 'CHUATT'; // Dịch sang CHUATT
+                        break;
+                }
+                // --------------------------------------------------------
+
+                const row = `
+            <tr>
+                <td>${invoice.mahd}</td>
+                <td>${customerName}</td>
+                <td>${invoice.ngaylap}</td>
+                <td>${formatCurrency(invoice.congtienhang)}</td>
+                <td>${formatCurrency(invoice.congchietkhau)}</td>
+                <td>${formatCurrency(invoice.khhdathanhtoan)}</td>
+                <td>
+                    <span class="${invoice.conno > 0 && invoice.trangthai !== 'Huy' ? 'text-danger fw-bold' : (invoice.conno <= 0 && invoice.trangthai !== 'Huy' ? 'text-success' : 'text-danger fw-bold')}">
+                        ${formatCurrency(invoice.conno)}
+                    </span>
+                </td>
+                <td><span class="${statusClass}">${displayStatusText}</span></td>
+                <td>${invoice.nguoilap || ''}</td>
+                <td>${invoice.ghichu || ''}</td>
+                <td>
+                    <button type="button" class="btn btn-info btn-sm view-invoice-btn me-1" data-mahd="${invoice.mahd}">Xem</button>
+                    ${invoice.trangthai !== 'Huy' ? // Kiểm tra giá trị "Huy" để ẩn nút Hủy
+                        `<button type="button" class="btn btn-danger btn-sm cancel-invoice-table-btn" data-mahd="${invoice.mahd}">Hủy</button>`
+                        : ''}
+                </td>
+            </tr>
+            `;
+                tableBody.append(row);
+            }
+            renderPaginationControls(); // Gọi hàm render sau khi có dữ liệu
+        } catch (error) {
+            console.error('Lỗi khi lấy danh sách hóa đơn:', error);
+            $('#invoicesTableBody').html('<tr><td colspan="11" class="text-danger text-center">Lỗi tải dữ liệu hóa đơn.</td></tr>');
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi!',
+                text: 'Không thể tải danh sách hóa đơn. Vui lòng thử lại.'
+            });
+            $('#paginationControls').empty(); // Xóa các nút phân trang nếu có lỗi
+        }
+    }
+
+    async function showInvoiceDetails(mahd) {
+        try {
+            const response = await fetch(`/invoices/detail/${mahd}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch invoice details');
+            }
+            const invoice = await response.json();
+            currentInvoiceDetails = invoice;
+            console.log("Invoice details loaded into currentInvoiceDetails:", invoice);
+
+            // --- LOG ĐỂ KIỂM TRA GIÁ TRỊ THỰC TẾ TỪ API ---
+            console.log("Trạng thái hóa đơn nhận được từ API:", invoice.trangthai);
+            // ---------------------------------------------
+
+            $('#editInvoiceBtn').data('mahd', invoice.mahd);
+            $('#modalInvoiceMahd').text(invoice.mahd);
+
+            $('#detailMahd').text(invoice.mahd);
+            $('#detailNgaylap').text(invoice.ngaylap);
+            $('#detailNguoilap').text(invoice.nguoilap || 'N/A');
+            $('#detailGhichu').text(invoice.ghichu || 'N/A');
+
+            $('#detailCreatedAt').text(invoice.created_at);
+            $('#detailUpdatedAt').text(invoice.updated_at);
+
+            let statusText = ''; // Biến sẽ chứa trạng thái tiếng Việt (DATT, CHUATT, HUY)
+            let statusBadgeClass = ''; // Biến sẽ chứa lớp CSS
+
+            // --- Cập nhật logic SWITCH để khớp với giá trị từ API ---
+            switch (invoice.trangthai) {
+                case 'DaTT': // Backend trả về "DaTT"
+                    statusText = 'DATT'; // Hiển thị DATT
+                    statusBadgeClass = 'text-success fw-bold';
+                    break;
+                case 'Huy': // Backend trả về "Huy"
+                    statusText = 'HUY'; // Hiển thị HUY
+                    statusBadgeClass = 'text-muted fst-italic';
+                    break;
+                case 'ChuaTT': // Backend trả về "ChuaTT"
+                    statusText = 'CHUATT'; // Hiển thị CHUATT
+                    statusBadgeClass = 'text-warning fw-bold';
+                    break;
+                // Nếu có thêm trạng thái nào khác từ backend, bạn sẽ thêm 'case' ở đây
+                default:
+                    statusText = invoice.trangthai || 'N/A'; // Giữ nguyên giá trị nếu không khớp
+                    statusBadgeClass = '';
+                    break;
+            }
+            $('#detailTrangthai').html(`<span class="${statusBadgeClass}">${statusText}</span>`);
+            // --------------------------------------------------------
+
+            // --- Cập nhật logic ẩn/hiện nút để khớp với giá trị từ API ---
+            if (invoice.trangthai === 'Huy') { // Kiểm tra đúng "Huy" (chữ H hoa)
+                console.log("Hóa đơn có trạng thái 'Huy'. Ẩn nút Hủy và hiện thông tin hủy.");
+                $('#detailNgayHuy').text(invoice.ngay_huy || 'N/A');
+                $('#detailNguoiHuy').text(invoice.nguoi_huy || 'N/A');
+                $('.cancel-info').show();
+
+                $('#editInvoiceBtn').hide();
+                $('#markPaidBtn').hide();
+                $('#cancelInvoiceModalBtn').hide(); // Ẩn nút "Hủy"
+            } else {
+                console.log("Hóa đơn không có trạng thái 'Huy'. Hiển thị nút Hủy và ẩn thông tin hủy.");
+                $('.cancel-info').hide();
+
+                $('#editInvoiceBtn').show();
+                $('#markPaidBtn').show();
+                $('#cancelInvoiceModalBtn').show(); // Hiển thị nút "Hủy"
+
+                // Logic cho nút "Ghi nhận thanh toán"
+                if (invoice.conno <= 0 || invoice.trangthai === 'DaTT') { // Nếu không còn nợ HOẶC đã DATT thì ẩn nút này
+                    $('#markPaidBtn').hide();
+                } else {
+                    $('#markPaidBtn').show();
+                }
+            }
+            // ----------------------------------------------------------------
+
+            // Đặt mặc định là ẩn thông tin thay thế mỗi khi modal được mở
+            $('.replace-info').hide();
+            $('#detailMahdThayThe').text('');
+
+            if (invoice.mahd_thay_the) {
+                $('#detailMahdThayThe').text(invoice.mahd_thay_the);
+                $('.replace-info').show();
+            }
+
+            $('#detailTenkh').text(invoice.customer ? invoice.customer.tenkh : 'Không có khách hàng');
+
+            const detailTableBody = $('#invoiceDetailsTableBody');
+            detailTableBody.empty();
+
+            if (invoice.details && invoice.details.length > 0) {
+                invoice.details.forEach((detail, idx) => {
+                    const productName = detail.product ? detail.product.tensp : 'Sản phẩm không xác định';
+
+                    const row = `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${productName}</td>
+                    <td>${detail.donvi || 'N/A'}</td>
+                    <td>${(detail.sl || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                    <td>${formatCurrency(detail.dongia)}</td>
+                    <td>${(detail.ck || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                    <td>${formatCurrency(detail.thanhtien)}</td>
+                </tr>
+                `;
+                    detailTableBody.append(row);
+                });
+            } else {
+                detailTableBody.append('<tr><td colspan="7" class="text-center">Không có chi tiết sản phẩm.</td></tr>');
+            }
+
+            $('#detailCongtienhang').text(formatCurrency(invoice.congtienhang));
+            $('#detailCongchietkhau').text(formatCurrency(invoice.congchietkhau));
+            $('#detailKhhdathanhtoan').text(formatCurrency(invoice.khhdathanhtoan));
+            $('#detailConno').text(formatCurrency(invoice.conno));
+
+            currentInvoiceForPay = invoice.mahd;
+            $('#cancelInvoiceModalBtn').data('mahd', invoice.mahd);
+
+            $('#invoiceDetailModal').modal('show');
+
+        } catch (error) {
+            console.error('Error displaying invoice details:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi!',
+                text: 'Không thể tải chi tiết hóa đơn. Vui lòng thử lại.'
+            });
+        }
+    }
+    async function cancelInvoice(mahd) {
+        Swal.fire({
+            title: 'Doanh thu hóa đơn sẽ không được ghi nhận, bạn có chắc chắn muốn hủy?',
+            text: "Hành động này không thể hoàn tác!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Đồng ý, hủy hóa đơn!',
+            cancelButtonText: 'Không'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`/invoices/${mahd}/cancel`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ cancel_user: "Admin" }) // Hoặc lấy tên người dùng hiện tại
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || 'Lỗi khi hủy hóa đơn.');
+                    }
+
+                    Swal.fire(
+                        'Đã hủy!',
+                        `Hóa đơn ${mahd} đã được hủy thành công.`,
+                        'success'
+                    );
+                    $('#invoiceDetailModal').modal('hide'); // Đóng modal nếu đang mở
+                    fetchInvoices(); // Tải lại danh sách hóa đơn
+                } catch (error) {
+                    console.error('Error canceling invoice:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lỗi!',
+                        text: error.message || 'Đã xảy ra lỗi khi hủy hóa đơn. Vui lòng thử lại.'
+                    });
+                }
+            }
+        });
+    }
+
+    async function exportInvoicesToExcel() {
+        console.log('Bước 1: Hàm exportInvoicesToExcel được gọi.');
+        try {
+            // Lấy các giá trị bộ lọc từ input fields
+            const mahdFilter = $('#filterMahd').val();
+            const makhFilter = $('#filterMakh').val();
+            const ngaylapFromFilter = $('#filterNgaylapFrom').val();
+            const ngaylapToFilter = $('#filterNgaylapTo').val();
+
+            // Tạo một đối tượng để chứa các tham số HỢP LỆ (không rỗng)
+            const validFilters = {};
+            if (mahdFilter) {
+                validFilters.mahd = mahdFilter;
+            }
+            if (makhFilter) {
+                validFilters.makh = makhFilter;
+            }
+            if (ngaylapFromFilter) {
+                validFilters.ngaylap_from = ngaylapFromFilter;
+            }
+            if (ngaylapToFilter) {
+                validFilters.ngaylap_to = ngaylapToFilter;
+            }
+
+            // Tạo query string chỉ từ các tham số hợp lệ
+            const params = new URLSearchParams(validFilters).toString();
+
+            const apiEndpoint = `/invoices/export-excel${params ? '?' + params : ''}`;
+            console.log('Bước 2: Gửi yêu cầu fetch tới URL xuất Excel:', apiEndpoint);
+
+            const response = await fetch(apiEndpoint);
+            console.log('Bước 3: Nhận được phản hồi từ server. Status:', response.status, 'OK:', response.ok);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Phản hồi lỗi từ server khi xuất Excel:', errorData);
+                let errorMessage = 'Lỗi khi xuất Excel. Vui lòng thử lại.';
+                if (errorData && errorData.detail) {
+                    if (Array.isArray(errorData.detail)) {
+                        errorMessage = errorData.detail.map(err => `${err.loc.join('.')} - ${err.msg}`).join('\n');
+                    } else {
+                        errorMessage = errorData.detail;
+                    }
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: errorMessage,
+                });
+                return;
+            }
+
+            // --- BẮT ĐẦU PHẦN BẠN CẦN THÊM VÀO ---
+
+            // Bước 4: Lấy tên file từ header 'Content-Disposition'
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}.xlsx`; // Tên mặc định
+            if (contentDisposition && contentDisposition.indexOf('filename=') !== -1) {
+                // Cải tiến việc trích xuất tên file để xử lý dấu ngoặc kép
+                const filenameMatch = contentDisposition.match(/filename\*?=['"]?(.*?)['"]?$/i);
+                if (filenameMatch && filenameMatch[1]) {
+                    try {
+                        // Cố gắng giải mã URL encoding nếu cần
+                        filename = decodeURIComponent(filenameMatch[1].replace(/\+/g, ' '));
+                    } catch (e) {
+                        filename = filenameMatch[1];
+                    }
+                } else {
+                    // Fallback cho định dạng cũ hoặc các trường hợp khác
+                    const oldFilenameMatch = contentDisposition.split('filename=')[1];
+                    if (oldFilenameMatch) {
+                        filename = oldFilenameMatch.split(';')[0].replace(/"/g, '');
+                    }
+                }
+            }
+            console.log('Bước 4: Tên file được xác định:', filename);
+
+
+            // Bước 5: Chuyển đổi phản hồi thành Blob (dữ liệu nhị phân)
+            const blob = await response.blob();
+            console.log('Bước 5: Phản hồi được chuyển đổi thành Blob. Kích thước Blob:', blob.size, 'bytes');
+
+            // Bước 6: Tạo URL cho Blob
+            const url = window.URL.createObjectURL(blob);
+            console.log('Bước 6: URL đối tượng được tạo:', url);
+
+            // Bước 7: Tạo một thẻ <a> ẩn để kích hoạt tải xuống
+            const a = document.createElement('a');
+            a.style.display = 'none'; // Ẩn thẻ <a>
+            a.href = url;
+            a.download = filename; // Gán tên file tải xuống
+            document.body.appendChild(a); // Thêm thẻ <a> vào DOM
+
+            console.log('Bước 7: Thẻ <a> được tạo và gắn vào DOM. Sẵn sàng tải xuống.');
+
+            // Bước 8: Kích hoạt sự kiện click để tải file
+            a.click();
+            console.log('Bước 8: Kích hoạt tải xuống file.');
+
+            // Bước 9: Dọn dẹp: Hủy URL đối tượng và xóa thẻ <a>
+            window.URL.revokeObjectURL(url); // Giải phóng tài nguyên URL đối tượng
+            a.remove(); // Xóa thẻ <a> khỏi DOM
+            console.log('Bước 9: Dọn dẹp hoàn tất.');
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Thành công!',
+                text: 'File Excel đã được tải xuống.',
+                confirmButtonText: 'Đóng'
+            });
+
+            // --- KẾT THÚC PHẦN BẠN CẦN THÊM VÀO ---
+
+        } catch (error) {
+            console.error('Bước CUỐI: Đã xảy ra lỗi khi xuất Excel:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi!',
+                text: error.message || 'Xuất Excel thất bại. Vui lòng thử lại.',
+            });
+        }
+    }
+    $(document).ready(function () {
+        $('#printInvoiceBtn').on('click', printInvoiceDetails); // Đảm bảo printInvoiceDetails được định nghĩa
+
+        // Khởi tạo Select2 cho bộ lọc khách hàng
+        $('#filterMakh').select2({
+            placeholder: 'Chọn khách hàng...',
+            allowClear: true,
+            ajax: {
+                url: '/customers/', // Endpoint để lấy danh sách khách hàng
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        search: params.term, // Tham số tìm kiếm
+                        limit: 10 // Giới hạn số lượng kết quả
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data.customers, function (item) {
+                            return {
+                                id: item.makh,
+                                text: item.tenkh
+                            };
+                        })
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2 // Bắt đầu tìm kiếm sau khi nhập 1 ký tự
+        });
+
+
+        // ====================================================================
+        // Xử lý sự kiện tìm kiếm và xóa bộ lọc
+        // ====================================================================
+
+        // Khi form tìm kiếm được submit
+        $('#invoiceFilterForm').on('submit', function (e) {
+            e.preventDefault(); // Ngăn chặn submit form truyền thống
+
+            const filters = {
+                mahd: $('#filterMahd').val(),
+                makh: $('#filterMakh').val(), // Select2 trả về id của option được chọn
+                ngaylap_from: $('#filterNgaylapFrom').val(),
+                ngaylap_to: $('#filterNgaylapTo').val()
+            };
+            fetchInvoices(filters); // Gọi lại hàm fetchInvoices với các bộ lọc
+        });
+
+        // Khi nút "Xóa bộ lọc" được click
+        $('#clearFiltersBtn').on('click', function () {
+            $('#filterMahd').val('');
+            $('#filterMakh').val(null).trigger('change'); // Xóa chọn Select2
+            $('#filterNgaylapFrom').val('');
+            $('#filterNgaylapTo').val('');
+            fetchInvoices(); // Tải lại danh sách hóa đơn không có bộ lọc
+        });
+
+        // Tải hóa đơn lần đầu khi trang được load
+        fetchInvoices(); // Đảm bảo hàm fetchInvoices() được định nghĩa ở trên!
+
+        // Xử lý nút "Xem" trên bảng danh sách
+        $(document).on('click', '.view-invoice-btn', function () {
+            const mahd = $(this).data('mahd');
+            showInvoiceDetails(mahd); // Đảm bảo showInvoiceDetails() được định nghĩa
+        });
+
+        // Xử lý nút "Chỉnh sửa" trong modal chi tiết
+        $('#editInvoiceBtn').on('click', function () {
+            console.log("Click editInvoiceBtn. currentInvoiceDetails:", currentInvoiceDetails);
+            if (currentInvoiceDetails && currentInvoiceDetails.mahd) {
+                window.location.href = `/create-invoice-page?mahd=${currentInvoiceDetails.mahd}`;
+            } else {
+                Swal.fire('Lỗi', 'Không có dữ liệu hóa đơn để chỉnh sửa.', 'error');
+            }
+        });
+
+        // Xử lý nút "Ghi nhận thanh toán" trong modal chi tiết
+        $('#markPaidBtn').on('click', async function () {
+            if (currentInvoiceForPay) {
+                try {
+                    const response = await fetch(`/invoices/detail/${currentInvoiceForPay}`);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch invoice for payment');
+                    }
+                    const invoice = await response.json();
+
+                    if (invoice.trangthai === 'CANCELLED') {
+                        Swal.fire('Cảnh báo', 'Không thể ghi nhận thanh toán cho hóa đơn đã hủy.', 'warning');
+                        return;
+                    }
+                    if (invoice.conno <= 0) {
+                        Swal.fire('Thông báo', 'Hóa đơn này đã được thanh toán đủ.', 'info');
+                        return;
+                    }
+
+                    $('#payInvoiceMahd').text(invoice.mahd);
+                    $('#payInvoiceHiddenMahd').val(invoice.mahd);
+                    $('#currentInvoiceConno').text(formatCurrency(invoice.conno));
+                    $('#paidAmount').val(invoice.conno || 0);
+
+                    $('#invoiceDetailModal').modal('hide');
+                    $('#markPaidModal').modal('show');
+
+                } catch (error) {
+                    console.error('Error preparing payment modal:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lỗi!',
+                        text: error.message || 'Không thể tải thông tin hóa đơn để thanh toán.'
+                    });
+                }
+            } else {
+                Swal.fire('Cảnh báo', 'Không có hóa đơn để ghi nhận thanh toán.', 'warning');
+            }
+        });
+
+        // Xử lý submit form thanh toán
+        $('#payInvoiceForm').on('submit', async function (e) {
+            e.preventDefault();
+            const mahd = $('#payInvoiceHiddenMahd').val();
+            const paidAmount = parseFloat($('#paidAmount').val());
+
+            if (isNaN(paidAmount) || paidAmount <= 0) {
+                Swal.fire('Cảnh báo', 'Vui lòng nhập số tiền thanh toán hợp lệ và lớn hơn 0.', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/invoices/${mahd}/pay`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ amount: paidAmount })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Lỗi ghi nhận thanh toán.');
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: `Đã ghi nhận thanh toán ${formatCurrency(paidAmount)} cho hóa đơn ${mahd}!`,
+                    confirmButtonText: 'Đóng'
+                });
+                $('#markPaidModal').modal('hide');
+                fetchInvoices(); // Tải lại danh sách hóa đơn để cập nhật trạng thái
+            } catch (error) {
+                console.error('Error submitting payment:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: error.message || 'Đã xảy ra lỗi khi ghi nhận thanh toán. Vui lòng thử lại.'
+                });
+            }
+        });
+
+        // THAY ĐỔI: Đảm bảo sử dụng ID đúng của nút Xuất Excel
+        const exportButton = document.getElementById('exportExcelBtn');
+
+        // Kiểm tra xem nút có tồn tại không trước khi thêm event listener
+        if (exportButton) {
+            exportButton.addEventListener('click', exportInvoicesToExcel);
+            console.log('Đã gắn sự kiện click cho nút Xuất Excel (ID: exportExcelBtn).');
+        } else {
+            // Sửa lại console.error để phản ánh ID đúng mà bạn đang tìm kiếm
+            console.error('Lỗi: Không tìm thấy nút Xuất Excel với ID "exportExcelBtn".');
+        }
+
+        // Xử lý nút "Hủy hóa đơn" từ bảng chính
+        $(document).on('click', '.cancel-invoice-table-btn', function () {
+            const mahd = $(this).data('mahd');
+            cancelInvoice(mahd); // Đảm bảo cancelInvoice() được định nghĩa
+        });
+
+        // Xử lý nút "Hủy hóa đơn" từ modal chi tiết
+        $('#cancelInvoiceModalBtn').on('click', function () {
+            const mahd = $(this).data('mahd');
+            if (mahd) {
+                cancelInvoice(mahd); // Đảm bảo cancelInvoice() được định nghĩa
+            } else {
+                Swal.fire('Lỗi', 'Không tìm thấy mã hóa đơn để hủy.', 'error');
+            }
+        });
+    });
+</script>
+{% endblock %}

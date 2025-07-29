@@ -1,0 +1,49 @@
+.\venv\Scripts\activate
+uvicorn backend.main:app --reload --host 0.0.0.0
+pip install -r requirements.txt
+
+Username: admin
+
+Password: 0936266648
+ketoan
+Password: 123456
+	
+Thêm 2 file backup_pg.bat (chạy định kỳ backup), start_fastapi_server.bat( chạy tự động sever) vào schedule
+Copy folder postgresql vào %appdata%
+
+├── backend/
+│   ├── main.py                # Điểm khởi chạy chính của FastAPI
+│   ├── database.py            # Cấu hình kết nối DB và định nghĩa Model (SQLModel/SQLAlchemy)
+│   ├── crud.py                # Các hàm thao tác với DB (Create, Read, Update, Delete)
+│   ├── models.py              # Định nghĩa Pydantic Models cho request/response
+│   └── routers/
+│       ├── customers.py       # API routes cho khách hàng
+│       ├── products.py        # API routes cho sản phẩm
+│       └── invoices.py        # API routes cho hóa đơn
+│		└── auth.py     	   # API routes user
+├── frontend/
+│   ├── static/
+│   │   ├── css/
+│   │   │   └── style.css      # CSS tùy chỉnh của bạn
+│   │   ├── js/
+│   │   │   └── script.js      # JavaScript tùy chỉnh (XHR calls, DOM manipulation)
+│   │   └── lib/               # Thư viện bên ngoài (Bootstrap, Select2, jQuery)
+│   │       ├── bootstrap/
+│   │       │   ├── css/
+│   │       │   └── js/
+│   │       ├── select2/
+│   │       │   ├── css/
+│   │       │   └── js/
+│   │       └── jquery/
+│   │           └── jquery.min.js
+│   ├── templates/
+│   │   ├── index.html         # Trang chủ, dashboard
+│   │   ├── customers.html     # Trang quản lý khách hàng
+│   │   ├── products.html      # Trang quản lý sản phẩm
+│   │   ├── invoices.html      # Trang danh sách hóa đơn
+│   │   ├── create_invoice.html # Trang tạo hóa đơn mới
+│   │   └── base.html          # Layout cơ bản (header, footer, navigation)
+│
+├── .env                       # Biến môi trường (ví dụ: SECRET_KEY)
+├── requirements.txt           # Danh sách các thư viện Python cần cài đặt
+└── README.md                  # Mô tả dự án

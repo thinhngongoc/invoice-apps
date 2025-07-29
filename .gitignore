@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Editor/OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Render/Deployment specific
+.cargo/
+.rustup/
+target/ # Thư mục biên dịch của Rust
+dist/
+build/
+
+# Environment variables
+.env

@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Sản phẩm{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Quản lý Sản phẩm <span class="badge bg-secondary" id="totalProductsCount"></span></h2>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <input type="text" id="productSearchInput" class="form-control" placeholder="Tìm kiếm sản phẩm...">
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal" id="addProductBtn">
+                Thêm Sản phẩm mới
+            </button>
+            <button class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                Import Excel
+            </button>
+            <button class="btn btn-info ms-2" id="exportExcelBtn">
+                Export Excel
+            </button>
+        </div>
+    </div>
+
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Mã SP</th>
+                <th>Tên Sản phẩm</th>
+                <th>Đơn vị</th>
+                <th>Đơn giá</th>
+                <th>Tồn Kho</th>
+                <th>Ghi chú</th>
+                <th>Ngày tạo</th>
+                <th>Ngày cập nhật</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody id="productTableBody">
+        </tbody>
+    </table>
+
+    <nav>
+        <ul class="pagination justify-content-center" id="pagination">
+        </ul>
+    </nav>
+</div>
+
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">Thêm/Sửa Sản phẩm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="productMasp">
+
+                    <div class="mb-3">
+                        <label for="productTensp" class="form-label">Tên Sản phẩm</label>
+                        <input type="text" class="form-control" id="productTensp" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="productDonvi" class="form-label">Đơn vị</label>
+                        <input type="text" class="form-control" id="productDonvi">
+                    </div>
+                    <div class="mb-3">
+                        <label for="productDongia" class="form-label">Đơn giá</label>
+                        <input type="number" class="form-control" id="productDongia" step="0.01" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="productTonkho" class="form-label">Tồn Kho</label>
+                        <input type="number" class="form-control" id="productTonkho" step="0.01" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="productGhichu" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="productGhichu" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importExcelModalLabel">Import Sản phẩm từ Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info" role="alert">
+                    <strong>Lưu ý quan trọng:</strong>
+                    <ul class="mb-0">
+                        <li>File Excel phải có các cột: <strong>"Tên SP"</strong> và <strong>"Đơn giá"</strong> là bắt
+                            buộc.</li>
+                        <li>Các cột tùy chọn: <strong>"Đơn vị"</strong>, <strong>"Tồn kho"</strong>, <strong>"Ghi
+                                chú"</strong>.</li>
+                        <li>Tên sản phẩm và đơn vị phải khớp chính xác để cập nhật sản phẩm đã có.</li>
+                        <li>Đơn giá và Tồn kho phải là số.</li>
+                        <li>Sau khi import, dữ liệu hiện tại sẽ được cập nhật hoặc thêm mới.</li>
+                    </ul>
+                </div>
+                <form id="importExcelForm">
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Chọn file Excel (.xlsx, .xls)</label>
+                        <input class="form-control" type="file" id="excelFile" accept=".xlsx, .xls" required>
+                    </div>
+                    <div id="importStatus" class="mt-3"></div>
+                    <button type="submit" class="btn btn-primary" id="uploadExcelBtn">Tải lên và Import</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    // 1. Định nghĩa các biến toàn cục trước tiên
+    let currentPage = 1;
+    const limit = 20; // Number of items per page
+
+    // Hàm parseDateString đã được loại bỏ. formatDate từ file JS chung sẽ được sử dụng.
+
+    // Hàm mới để xử lý logic import thực tế (được gọi sau khi xác nhận)
+    async function executeProductImport() {
+        const fileInput = document.getElementById('excelFile');
+        const file = fileInput.files[0];
+        const importStatus = $('#importStatus');
+
+        // Không cần kiểm tra file ở đây nữa vì đã kiểm tra trước khi xác nhận
+        // if (!file) { ... return; } 
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        importStatus.html('<div class="alert alert-info">Đang tải lên và xử lý...</div>');
+        $('#uploadExcelBtn').prop('disabled', true);
+
+        try {
+            // Lấy token nếu API của bạn yêu cầu xác thực
+            const token = sessionStorage.getItem('accessToken');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+
+            const response = await fetch('/products/import_excel', {
+                method: 'POST',
+                headers: headers, // Sử dụng headers đã có token
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                let successMessage = `Import thành công: ${result.added_count} sản phẩm mới, ${result.updated_count} sản phẩm cập nhật.`;
+                if (result.errors && result.errors.length > 0) {
+                    successMessage += `<br><br>Có lỗi ở ${result.errors.length} dòng:<ul>`;
+                    result.errors.forEach(err => {
+                        successMessage += `<li>${err}</li>`;
+                    });
+                    successMessage += `</ul>`;
+
+                    Swal.fire({
+                        title: 'Import Hoàn Tất (Có lỗi)',
+                        html: successMessage,
+                        icon: 'warning',
+                        confirmButtonText: 'Đóng'
+                    });
+                } else {
+                    Swal.fire('Thành công!', successMessage, 'success');
+                }
+                fetchProducts(currentPage, $('#productSearchInput').val()); // Tải lại danh sách sản phẩm
+                fileInput.value = ''; // Xóa file đã chọn
+                // Có thể đóng modal sau khi import thành công (nếu không có lỗi chi tiết cần xem)
+                // $('#importExcelModal').modal('hide'); 
+
+            } else {
+                let errorMessage = `Lỗi: ${result.detail || 'Không xác định.'}`;
+                if (result.errors) {
+                    errorMessage += '<br>Chi tiết lỗi:<br><ul>';
+                    result.errors.forEach(err => {
+                        errorMessage += `<li>${err}</li>`;
+                    });
+                    errorMessage += '</ul>';
+                }
+                Swal.fire('Import thất bại', errorMessage, 'error');
+                console.error('Import error:', result);
+            }
+        } catch (error) {
+            console.error('Error importing Excel:', error);
+            Swal.fire('Lỗi hệ thống', `Đã xảy ra lỗi khi gửi yêu cầu import: ${error.message}`, 'error');
+        } finally {
+            $('#uploadExcelBtn').prop('disabled', false);
+        }
+    }
+
+
+    // 3. Định nghĩa các hàm chính (main logic functions) sau các hàm tiện ích đã được nhúng
+    async function fetchProducts(page = 1, searchQuery = '') {
+        currentPage = page;
+        const skip = (page - 1) * limit;
+        let url = `/products/?skip=${skip}&limit=${limit}`;
+        if (searchQuery) {
+            url += `&search_query=${encodeURIComponent(searchQuery)}`;
+        }
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Tổng số sản phẩm từ API:", data.total_count);
+            const calculatedTotalPages = Math.ceil(data.total_count / limit);
+            console.log("Tổng số trang đã tính toán:", calculatedTotalPages);
+            displayProducts(data.products);
+            setupPagination(data.total_count, page);
+
+            $('#totalProductsCount').text(`(${data.total_count} sản phẩm)`);
+
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            $('#productTableBody').html('<tr><td colspan="9">Không thể tải dữ liệu sản phẩm.</td></tr>');
+            $('#totalProductsCount').text('');
+        }
+    }
+
+    function displayProducts(products) {
+        const productTableBody = $('#productTableBody');
+        productTableBody.empty();
+        if (products.length === 0) {
+            productTableBody.append('<tr><td colspan="9">Không có sản phẩm nào.</td></tr>');
+            return;
+        }
+        products.forEach(product => {
+            const createdAtDisplay = formatDate(product.created_at);
+            const updatedAtDisplay = formatDate(product.updated_at);
+
+            const row = `
+                <tr>
+                    <td>${product.masp}</td>
+                    <td>${product.tensp}</td>
+                    <td>${product.donvi || ''}</td>
+                    <td>${formatCurrency(product.dongia)}</td>
+                    <td>${formatNumber(product.tonkho)}</td>
+                    <td>${product.ghichu || ''}</td>
+                    <td>${createdAtDisplay}</td>
+                    <td>${updatedAtDisplay}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning edit-product-btn" 
+                                data-bs-toggle="modal" data-bs-target="#productModal"
+                                data-masp="${product.masp}" 
+                                data-tensp="${product.tensp}" 
+                                data-donvi="${product.donvi || ''}" 
+                                data-dongia="${product.dongia}" 
+                                data-tonkho="${product.tonkho}"
+                                data-ghichu="${product.ghichu || ''}">Sửa</button>
+                    </td>
+                </tr>
+            `;
+            productTableBody.append(row);
+        });
+    }
+
+    function setupPagination(totalCount, currentPage) {
+        const pagination = $('#pagination');
+        pagination.empty(); // Xóa các số trang cũ trước khi tạo mới
+        const totalPages = Math.ceil(totalCount / limit); // totalPages là tổng số trang
+
+        // console.log("setupPagination được gọi với totalCount:", totalCount, "currentPage:", currentPage);
+        // console.log("setupPagination đã tính toán totalPages:", totalPages);
+
+        if (totalPages > 1) {
+            // Nút "Trước"
+            let prevDisabled = currentPage === 1 ? 'disabled' : '';
+            pagination.append(`<li class="page-item ${prevDisabled}"><a class="page-link" href="#" data-page="${currentPage - 1}">Trước</a></li>`);
+
+            // Logic để hiển thị các số trang (bao gồm dấu "...")
+            const pageRange = 10; // Số lượng trang hiển thị xung quanh trang hiện tại
+            let startPage = Math.max(1, currentPage - Math.floor(pageRange / 2));
+            let endPage = Math.min(totalPages, currentPage + Math.ceil(pageRange / 2) - 1);
+
+            // Điều chỉnh startPage và endPage để luôn có pageRange số trang nếu có đủ
+            if (endPage - startPage + 1 < pageRange) {
+                if (currentPage - startPage < Math.floor(pageRange / 2)) {
+                    endPage = Math.min(totalPages, startPage + pageRange - 1);
+                } else if (endPage - currentPage < Math.ceil(pageRange / 2) - 1) {
+                    startPage = Math.max(1, endPage - pageRange + 1);
+                }
+            }
+
+            // Luôn hiển thị trang đầu tiên
+            if (startPage > 1) {
+                pagination.append(`<li class="page-item ${1 === currentPage ? 'active' : ''}"><a class="page-link" href="#" data-page="1">1</a></li>`);
+                if (startPage > 2) {
+                    pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                }
+            }
+
+            // Hiển thị các trang trong phạm vi
+            for (let i = startPage; i <= endPage; i++) {
+                let activeClass = i === currentPage ? 'active' : '';
+                pagination.append(`<li class="page-item ${activeClass}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`);
+            }
+
+            // Luôn hiển thị trang cuối cùng
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    pagination.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+                }
+                pagination.append(`<li class="page-item ${totalPages === currentPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a></li>`);
+            }
+
+            // Nút "Sau"
+            let nextDisabled = currentPage === totalPages ? 'disabled' : '';
+            pagination.append(`<li class="page-item ${nextDisabled}"><a class="page-link" href="#" data-page="${currentPage + 1}">Sau</a></li>`);
+
+            // Gán sự kiện click cho các liên kết trang mới
+            pagination.find('.page-link').on('click', function (e) {
+                e.preventDefault();
+                const page = parseInt($(this).data('page'));
+                if (!isNaN(page) && page > 0 && page <= totalPages) {
+                    fetchProducts(page, $('#productSearchInput').val());
+                }
+            });
+        }
+    }
+
+    // 4. Khối $(document).ready() cuối cùng, để đảm bảo tất cả các hàm đã được định nghĩa và các hàm tiện ích đã được tải
+    $(document).ready(function () {
+        fetchProducts(); // Gọi hàm fetchProducts để tải dữ liệu ban đầu
+
+        $('#productSearchInput').on('keyup', function () {
+            fetchProducts(1, $(this).val());
+        });
+
+        $('#addProductBtn').on('click', function () {
+            $('#productModalLabel').text('Thêm Sản phẩm mới');
+            $('#productForm')[0].reset();
+            $('#productMasp').val('');
+            $('#productTonkho').val('0'); // Đặt giá trị mặc định cho tồn kho khi thêm mới
+        });
+
+        $(document).on('click', '.edit-product-btn', function () {
+            $('#productModalLabel').text('Sửa Sản phẩm');
+            $('#productMasp').val($(this).data('masp'));
+            $('#productTensp').val($(this).data('tensp'));
+            $('#productDonvi').val($(this).data('donvi'));
+            $('#productDongia').val($(this).data('dongia'));
+            $('#productTonkho').val($(this).data('tonkho'));
+            $('#productGhichu').val($(this).data('ghichu'));
+        });
+
+        $('#productForm').on('submit', async function (e) {
+            e.preventDefault();
+            const masp = $('#productMasp').val();
+            const productData = {
+                tensp: $('#productTensp').val(),
+                donvi: $('#productDonvi').val(),
+                dongia: parseFloat($('#productDongia').val()),
+                tonkho: parseFloat($('#productTonkho').val()) || 0,
+                ghichu: $('#productGhichu').val()
+            };
+
+            let url;
+            let method;
+
+            if (masp) {
+                url = `/products/${masp}`;
+                method = 'PUT';
+            } else {
+                url = '/products/';
+                method = 'POST';
+            }
+
+            try {
+                // Thêm token vào headers nếu cần
+                const token = sessionStorage.getItem('accessToken');
+                const requestHeaders = {
+                    'Content-Type': 'application/json'
+                };
+                if (token) {
+                    requestHeaders['Authorization'] = 'Bearer ' + token;
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: requestHeaders, // Sử dụng headers đã định nghĩa
+                    body: JSON.stringify(productData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    Swal.fire('Lỗi', `Lỗi: ${errorData.detail}`, 'error'); // Sử dụng Swal.fire
+                    return;
+                }
+
+                Swal.fire('Thành công!', `Sản phẩm đã được ${masp ? 'cập nhật' : 'thêm mới'} thành công!`, 'success'); // Sử dụng Swal.fire
+                $('#productModal').modal('hide');
+                fetchProducts(currentPage, $('#productSearchInput').val());
+            } catch (error) {
+                console.error('Error submitting product form:', error);
+                Swal.fire('Lỗi', 'Đã xảy ra lỗi. Vui lòng thử lại.', 'error'); // Sử dụng Swal.fire
+            }
+        });
+
+
+        // Thay đổi xử lý submit của form import để thêm cảnh báo
+        $('#importExcelForm').on('submit', async function (e) {
+            e.preventDefault(); // Ngăn chặn submit mặc định của form
+
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+
+            // Kiểm tra xem đã chọn file chưa
+            if (!file) {
+                Swal.fire('Lỗi', 'Vui lòng chọn một file Excel để import.', 'error');
+                return;
+            }
+
+            // Hiển thị cảnh báo SweetAlert2
+            Swal.fire({
+                title: 'Xác nhận Import Dữ liệu?',
+                html: `Dữ liệu sản phẩm sẽ được **cập nhật** theo file Excel bạn chọn.<br>
+                       Các sản phẩm có tên và đơn vị (nếu có) trùng khớp sẽ được cập nhật.<br>
+                       Sản phẩm mới sẽ được thêm vào.<br><br>
+                       <strong>Bạn có chắc chắn muốn tiếp tục?</strong>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Có, Import ngay!',
+                cancelButtonText: 'Hủy bỏ'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Nếu người dùng xác nhận, gọi hàm xử lý import thực tế
+                    executeProductImport();
+                } else {
+                    // Nếu người dùng hủy, reset trạng thái
+                    $('#importStatus').html(''); // Xóa thông báo "Đang tải lên" nếu có
+                    $('#uploadExcelBtn').prop('disabled', false); // Bật lại nút
+                }
+            });
+        });
+
+        $('#exportExcelBtn').on('click', async function () {
+            const currentSearchQuery = $('#productSearchInput').val();
+            let url = '/products/export_excel';
+            if (currentSearchQuery) {
+                url += `?search_query=${encodeURIComponent(currentSearchQuery)}`;
+            }
+
+            try {
+                // Thêm token vào headers nếu cần
+                const token = sessionStorage.getItem('accessToken');
+                const requestHeaders = {};
+                if (token) {
+                    requestHeaders['Authorization'] = 'Bearer ' + token;
+                }
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: requestHeaders // Sử dụng headers đã định nghĩa
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    Swal.fire('Lỗi', `Lỗi khi xuất Excel: ${errorData.detail}`, 'error'); // Sử dụng Swal.fire
+                    return;
+                }
+
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'danh_sach_san_pham.xlsx';
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1];
+                    }
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+
+                Swal.fire('Thành công!', 'Xuất file Excel thành công!', 'success'); // Sử dụng Swal.fire
+
+            } catch (error) {
+                console.error('Lỗi khi xuất Excel:', error);
+                Swal.fire('Lỗi', 'Đã xảy ra lỗi khi xuất file Excel. Vui lòng thử lại.', 'error'); // Sử dụng Swal.fire
+            }
+        });
+    });
+</script>
+{% endblock %}

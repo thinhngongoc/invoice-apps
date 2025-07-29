@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Chủ - Quản Lý Hóa Đơn</title>
+    <link href="/static/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/lib/select2/css/select2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary py-0">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">QLHD</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/reports-page">Báo Cáo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/customers-page">Khách hàng</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/products-page">Sản phẩm</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/invoices-page">Hóa đơn</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/create-invoice-page">Tạo Hóa đơn</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin-dashboard">Quản trị</a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownUser" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle"></i> admin (Admin)
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownUser">
+                            <li><a class="dropdown-item" href="#">Thông tin cá nhân</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                    data-bs-target="#changePasswordModal">
+                                    <i class="fas fa-key"></i> Đổi mật khẩu
+                                </a>
+                            </li>
+                            <li><a class="dropdown-item" href="/logout">Đăng xuất</a></li>
+                        </ul>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="changePasswordForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="changePasswordModalLabel">Đổi Mật Khẩu</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="oldPassword" class="form-label">Mật khẩu cũ</label>
+                            <input type="password" class="form-control" id="oldPassword" required minlength="6"
+                                maxlength="50">
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">Mật khẩu mới</label>
+                            <input type="password" class="form-control" id="newPassword" required minlength="6"
+                                maxlength="50">
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmNewPassword" class="form-label">Xác nhận mật khẩu mới</label>
+                            <input type="password" class="form-control" id="confirmNewPassword" required minlength="6"
+                                maxlength="50">
+                        </div>
+                        <div id="passwordChangeMessage" class="alert d-none mt-3" role="alert"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Đổi Mật Khẩu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+
+        <div class="p-5 mb-4 bg-light rounded-3">
+            <div class="container-fluid py-5">
+                <h1 class="display-5 fw-bold">Chào mừng đến với Hệ thống Quản lý Hóa đơn & Công nợ!</h1>
+                <p class="col-md-8 fs-4">Ứng dụng giúp bạn quản lý khách hàng, sản phẩm, hóa đơn và công nợ một cách
+                    hiệu quả.
+                </p>
+                <hr class="my-4">
+                <p>Chọn một trong các mục sau để bắt đầu:</p>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                    <a href="/customers-page" class="btn btn-primary btn-lg me-md-2" role="button">Quản lý Khách
+                        hàng</a>
+                    <a href="/products-page" class="btn btn-success btn-lg me-md-2" role="button">Quản lý Sản phẩm</a>
+                    <a href="/invoices-page" class="btn btn-info btn-lg me-md-2" role="button">Danh sách Hóa đơn</a>
+                    <a href="/create-invoice-page" class="btn btn-warning btn-lg me-md-2" role="button">Tạo Hóa đơn
+                        mới</a>
+                    <a href="/reports-page" class="btn btn-secondary btn-lg" role="button">Báo Cáo</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row align-items-md-stretch">
+            <div class="col-md-6">
+                <div class="h-100 p-5 text-white bg-dark rounded-3">
+                    <h2>Công nợ cần thu</h2>
+                    <p>Tổng công nợ hiện tại từ khách hàng: <span id="totalDebt" class="fw-bold">0.00 VNĐ</span></p>
+                    <a href="/customers-page" class="btn btn-outline-light">Xem chi tiết công nợ</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="h-100 p-5 bg-light border rounded-3">
+                    <h2>Hóa đơn gần đây</h2>
+                    <ul id="recentInvoicesList" class="list-group">
+                        <li class="list-group-item">Đang tải...</li>
+                    </ul>
+                    <a href="/invoices-page" class="btn btn-outline-secondary mt-3">Xem tất cả hóa đơn</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/static/lib/jquery/jquery.min.js"></script>
+    <script src="/static/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/lib/select2/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/static/js/formatters.js"></script>
+
+    <script>
+        // Hàm gọi API để lấy tổng công nợ
+        async function fetchTotalDebt() {
+            try {
+                const response = await fetch('/customers/');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch total debt');
+                }
+                const data = await response.json();
+                const customers = data.customers; // Lấy mảng khách hàng từ thuộc tính 'customers'
+
+                // Thêm kiểm tra để đảm bảo customers thực sự là một mảng trước khi dùng forEach
+                if (!Array.isArray(customers)) {
+                    console.error('API response for /customers/ did not contain an array in "customers" property:', data);
+                    throw new Error('Dữ liệu khách hàng từ API không đúng định dạng.');
+                }
+
+                let totalDebt = 0;
+                customers.forEach(customer => {
+                    totalDebt += customer.conno;
+                });
+
+                // Sử dụng hàm formatCurrency của bạn từ formatters.js
+                // Đảm bảo bạn có hàm `formatCurrency` trong `/static/js/formatters.js`
+                if (typeof formatCurrency === 'function') {
+                    $('#totalDebt').text(formatCurrency(totalDebt));
+                } else {
+                    console.error("Hàm 'formatCurrency' không tìm thấy. Vui lòng kiểm tra file formatters.js.");
+                    $('#totalDebt').text(totalDebt.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })); // Fallback
+                }
+
+
+            } catch (error) {
+                console.error('Lỗi khi lấy tổng công nợ:', error);
+                $('#totalDebt').text('Lỗi tải dữ liệu');
+            }
+        }
+
+        // Hàm gọi API để lấy hóa đơn gần đây
+        async function fetchRecentInvoices() {
+            try {
+                const response = await fetch('/invoices/?limit=10'); // Lấy 10 hóa đơn gần nhất
+                if (!response.ok) {
+                    throw new Error('Failed to fetch recent invoices');
+                }
+                const data = await response.json();
+                const invoices = data.invoices; // Lấy mảng hóa đơn từ thuộc tính 'invoices'
+
+                const list = $('#recentInvoicesList');
+                list.empty(); // Xóa trạng thái "Đang tải..."
+
+                if (invoices.length === 0) {
+                    list.append('<li class="list-group-item">Chưa có hóa đơn nào.</li>');
+                } else {
+                    invoices.forEach(invoice => {
+                        // Sử dụng hàm formatCurrency của bạn từ formatters.js
+                        // Đảm bảo bạn có hàm `formatCurrency` và `formatDate` trong `/static/js/formatters.js`
+                        let amountFormatted;
+                        if (typeof formatCurrency === 'function') {
+                            amountFormatted = formatCurrency(invoice.congtienhang - invoice.congchietkhau);
+                        } else {
+                            console.error("Hàm 'formatCurrency' không tìm thấy. Vui lòng kiểm tra file formatters.js.");
+                            amountFormatted = (invoice.congtienhang - invoice.congchietkhau).toLocaleString('vi-VN') + ' VNĐ'; // Fallback
+                        }
+
+                        let invoiceDateFormatted;
+                        if (typeof formatDate === 'function') {
+                            invoiceDateFormatted = formatDate(invoice.ngaylap);
+                        } else {
+                            console.error("Hàm 'formatDate' không tìm thấy. Vui lòng kiểm tra file formatters.js.");
+                            invoiceDateFormatted = invoice.ngaylap; // Fallback
+                        }
+
+
+                        const listItem = `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="/invoices-page?mahd=${invoice.mahd}">${invoice.mahd} - ${invoiceDateFormatted}</a>
+                                <span class="badge bg-primary rounded-pill">${amountFormatted}</span>
+                            </li>
+                        `;
+                        list.append(listItem);
+                    });
+                }
+            } catch (error) {
+                console.error('Lỗi khi lấy hóa đơn gần đây:', error);
+                $('#recentInvoicesList').html('<li class="list-group-item text-danger">Lỗi tải dữ liệu hóa đơn.</li>');
+            }
+        }
+
+        // Khi tài liệu đã sẵn sàng, gọi các hàm để tải dữ liệu
+        $(document).ready(function () {
+            fetchTotalDebt();
+            fetchRecentInvoices();
+        });
+    </script>
+
+</body>
+
+</html>

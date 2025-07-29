@@ -1,0 +1,236 @@
+/* Custom styles go here */
+body {
+    padding-top: 0px; /* Để tránh navbar che nội dung */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Thêm font hiện đại hơn */
+    color: #333; /* Màu chữ mặc định tối hơn */
+}
+
+/* Các style khác */
+.select2-container--default .select2-selection--single {
+    height: calc(2.25rem + 2px); /* Chiều cao tương ứng với input Bootstrap */
+    padding: 0.375rem 0.75rem;
+    line-height: 1.5;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: calc(2.25rem + 2px);
+}
+/* Trong style.css hoặc file CSS của bạn */
+
+.summary-totals {
+    /* Có thể thêm border-top nếu muốn có đường kẻ phân cách */
+    /* border-top: 1px solid #dee2e6; */
+    padding-top: 15px;
+    margin-bottom: 20px; /* Khoảng cách với footer của modal */
+    border-top: 1px solid #e0e0e0; /* Đường kẻ nhẹ phân biệt */
+}
+
+.summary-line {
+    display: flex; /* Sử dụng Flexbox để căn chỉnh nhãn và giá trị */
+    justify-content: space-between; /* Đẩy nhãn và giá trị ra hai bên */
+    align-items: baseline; /* Căn chỉnh theo đường cơ sở của văn bản */
+    margin-bottom: 8px; /* Khoảng cách giữa các dòng tổng */
+    padding-left: 15px; /* Thêm padding để căn chỉnh với nội dung modal */
+    padding-right: 15px; /* Thêm padding để căn chỉnh với nội dung modal */
+}
+
+.summary-line .summary-label {
+    flex-shrink: 0; /* Ngăn nhãn bị co lại */
+    padding-right: 15px; /* Khoảng cách giữa nhãn và giá trị */
+    white-space: nowrap; /* Đảm bảo nhãn không bị ngắt dòng */
+    text-align: left; /* Căn trái nhãn */
+    font-weight: 500; /* Làm nhãn đậm hơn một chút */
+    color: #555; /* Màu nhãn dịu hơn */
+}
+
+.summary-line .summary-value {
+    flex-grow: 1; /* Cho phép giá trị chiếm không gian còn lại và đẩy sang phải */
+    text-align: right; /* Căn phải giá trị */
+    font-weight: bold; /* Giá trị luôn đậm */
+    color: #000; /* Màu đen tuyền cho giá trị */
+}
+
+/* Tùy chỉnh thêm cho dòng "Còn Nợ" nếu muốn nổi bật hơn */
+.summary-line.total-debt .summary-label,
+.summary-line.total-debt .summary-value {
+    font-size: 1.35em; /* TĂNG KÍCH THƯỚC CHỮ đáng kể hơn */
+    color: #dc3545; /* Màu đỏ nổi bật cho công nợ */
+    font-weight: bold; /* Đảm bảo đậm */
+}
+
+.product-name-input {
+    font-size: 1.3rem; /* TĂNG KÍCH THƯỚC CHỮ - hơi giảm so với 1.4rem để cân đối */
+    font-weight: bold;
+    color: #212529; /* Màu chữ đậm hơn cho tên sản phẩm */
+}
+
+/* Nếu bạn muốn áp dụng cho các gợi ý khi search */
+.ui-autocomplete .ui-menu-item .ui-menu-item-wrapper {
+    font-size: 1rem; /* GIẢM NHẸ KÍCH THƯỚC CHỮ gợi ý để khác với input chính */
+    padding: 8px 12px; /* Tăng padding để dễ click */
+    border-bottom: 1px solid #f0f0f0; /* Đường phân cách nhẹ giữa các item */
+}
+.ui-autocomplete .ui-menu-item .ui-menu-item-wrapper:hover,
+.ui-autocomplete .ui-menu-item.ui-state-focus .ui-menu-item-wrapper {
+    background-color: #e9ecef; /* Màu nền khi hover hoặc focus */
+    color: #1a1a1a;
+}
+.invoice-item-row > div[class*="col-"] {
+    padding-right: 0.3rem; /* Tăng nhẹ padding để có khoảng trống tốt hơn */
+    padding-left: 0.3rem;
+}
+
+/* Giữ nguyên margin-bottom giữa các hàng chi tiết hóa đơn */
+.invoice-item-row {
+    margin-bottom: 0.4rem !important; /* Tăng nhẹ margin-bottom */
+}
+
+/* Giữ nguyên padding bên trong các input và select (bao gồm Select2) và tăng font */
+.invoice-item-row .form-control,
+.product-select + .select2-container .select2-selection--single {
+    padding: 0.3rem 0.6rem; /* Tăng padding nhẹ để đồng bộ */
+    height: auto; /* Để chiều cao tự động điều chỉnh theo font và padding */
+    min-height: calc(1.5em + 0.6rem + 2px); /* Đặt chiều cao tối thiểu */
+    font-size: 1.15rem; /* TĂNG KÍCH THƯỚC CHỮ nhẹ */
+}
+
+/* Điều chỉnh icon mũi tên của Select2 nếu cần */
+.product-select + .select2-container .select2-selection__arrow {
+    height: auto; /* Tự động điều chỉnh */
+    top: 50%;
+    transform: translateY(-50%);
+    right: 8px; /* Đảm bảo mũi tên nằm đúng vị trí */
+}
+
+/* Điều chỉnh cho hàng tiêu đề cột để đồng bộ với các dòng input */
+.row.mb-2 > div[class*="col-"] {
+    padding-right: 0.3rem; /* Đồng bộ padding */
+    padding-left: 0.3rem;
+}
+.row.mb-2 { /* Điều chỉnh margin-bottom của hàng tiêu đề */
+    margin-bottom: 0.4rem !important; /* Đồng bộ margin */
+}
+
+/* Các style đã có từ trước (giữ nguyên) */
+.product-select + .select2-container .select2-selection__rendered {
+    font-weight: bold;
+    color: #333;
+}
+.select2-container--default .select2-results__option {
+    font-size: 1.1rem; /* TĂNG KÍCH THƯỚC CHỮ */
+}
+
+/* ======= Thêm đoạn này vào để đảm bảo chữ trắng cho navbar ======= */
+.navbar-brand,
+.nav-link {
+    color: #ffffff !important; /* Buộc màu chữ là trắng tinh khiết */
+}
+
+.nav-link:hover {
+    color: #f8f9fa !important; /* Hơi nhạt hơn một chút khi hover nếu muốn hiệu ứng */
+}
+
+/* === STYLES MỚI CHO MÀU NỀN INPUT VÀ FONT === */
+
+/* Kiểu cho các trường nhập liệu CÓ THỂ CHỈNH SỬA - Màu XANH NHẠT và FONT to hơn */
+.form-control:not([readonly]):not([disabled]),
+input[type="text"]:not([readonly]):not([disabled]),
+input[type="number"]:not([readonly]):not([disabled]),
+select:not([disabled]) {
+    background-color: #F5FDFF; /* Màu xanh nhạt - để con trỏ không bị hòa lẫn */
+    color: #333333; /* Chữ tối để dễ đọc */
+    font-size: 1.1rem; /* Tăng kích thước font cho các input tổng quát */
+    border: 1px solid #a8d7eb; /* Viền xanh nhạt hơn */
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.075); /* Đổ bóng nhẹ */
+}
+
+/* Khi input được focus */
+.form-control:focus:not([readonly]):not([disabled]),
+input[type="text"]:focus:not([readonly]):not([disabled]),
+input[type="number"]:focus:not([readonly]):not([disabled]),
+select:focus:not([disabled]) {
+    border-color: #007bff; /* Viền xanh dương đậm khi focus */
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25); /* Đổ bóng xanh dương khi focus */
+    background-color: #e6f7ff; /* Nền xanh nhạt hơn khi focus */
+}
+
+
+/* Kiểu cho các trường nhập liệu KHÔNG THỂ CHỈNH SỬA (chỉ đọc/bị vô hiệu hóa) - Màu XÁM TỐI hơn và FONT to hơn */
+.form-control[readonly],
+.form-control[disabled],
+input[readonly],
+input[disabled],
+select[disabled] {
+    background-color: #e9ecef; /* Xám nhạt hơn một chút so với trắng tinh */
+    color: #495057; /* Màu chữ hơi mờ */
+    opacity: 1; /* Đảm bảo độ mờ là 1 để không bị mờ nhạt */
+    font-size: 1.1rem; /* Tăng kích thước font cho các input chỉ đọc */
+    border: 1px solid #ced4da; /* Viền xám */
+}
+
+/* Nếu bạn có các phần tử chỉ hiển thị giống như input */
+.display-field {
+    background-color: #e9ecef; /* Màu xám nhạt */
+    padding: 0.375rem 0.75rem; /* Giữ nguyên padding như input Bootstrap */
+    border-radius: 0.25rem; /* Giữ nguyên border-radius như input Bootstrap */
+    border: 1px solid #ced4da; /* Giữ nguyên border như input Bootstrap */
+    color: #495057;
+    font-size: 1.1rem; /* Tăng kích thước font cho display-field */
+}
+
+/* --- ĐIỀU CHỈNH ĐỂ LOẠI BỎ TOÀN BỘ ĐƯỜNG KẺ TRONG BẢNG --- */
+table.table {
+    margin-bottom: 0 !important;
+    border-collapse: collapse !important; /* Đảm bảo các đường viền được gộp lại */
+    border: none !important; /* Loại bỏ đường viền của chính bảng */
+    outline: none !important; /* Loại bỏ outline */
+    /* background-color: #fcfcfc; Màu nền rất nhẹ cho bảng */
+}
+
+table.table th,
+table.table td {
+    padding: 0.3rem 0.6rem !important; /* Điều chỉnh padding cho phù hợp với font to hơn */
+    vertical-align: middle; /* Giữ nguyên */
+    border: none !important; /* RẤT QUAN TRỌNG: Loại bỏ mọi đường viền cho ô tiêu đề và ô dữ liệu */
+    outline: none !important; /* Loại bỏ outline */
+    font-size: 1.1rem; /* TĂNG KÍCH THƯỚC CHỮ */
+    /* white-space: nowrap; (Để mặc định nếu không khai báo để nó wrap tự động hoặc nowrap tùy ngữ cảnh HTML) */
+}
+
+table.table tr {
+    border: none !important; /* Đảm bảo không có đường kẻ cho hàng */
+    outline: none !important; /* Loại bỏ outline */
+}
+
+/* --- MÀU SẮC CHO TRẠNG THÁI (ChuaTT, DaTT, Huy) --- */
+.status-badge {
+    display: inline-block; /* Để padding và border-radius hoạt động */
+    padding: 0.3em 0.7em;
+    border-radius: 0.3rem; /* Bo góc nhẹ */
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9em; /* Nhỏ hơn một chút để là "badge" */
+    line-height: 1; /* Đảm bảo chiều cao hợp lý */
+    white-space: nowrap; /* Ngăn không cho chữ xuống dòng */
+    text-align: center;
+}
+
+.status-chua-tt {
+    background-color: #ffc107; /* Màu cam của Bootstrap warning */
+    color: #343a40; /* Màu chữ: đen đậm để dễ đọc trên nền cam */
+    border: 1px solid #ffae00; /* Viền đậm hơn một chút */
+}
+
+.status-da-tt {
+    background-color: #28a745; /* Màu xanh lá của Bootstrap success */
+    color: #ffffff; /* Chữ trắng */
+    border: 1px solid #218838;
+}
+
+.status-huy {
+    background-color: #6c757d; /* Màu xám của Bootstrap secondary */
+    color: #ffffff; /* Chữ trắng */
+    border: 1px solid #545b62;
+}

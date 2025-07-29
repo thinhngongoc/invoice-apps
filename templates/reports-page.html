@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Báo Cáo Doanh Thu & Công Nợ{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Báo Cáo Doanh Thu & Công Nợ</h1>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <label for="reportType" class="form-label">Chọn loại báo cáo:</label>
+            <select class="form-select" id="reportType">
+                <option value="monthly">Theo tháng</option>
+                <option value="quarterly">Theo quý</option>
+                <option value="yearly">Theo năm</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="reportYear" class="form-label">Chọn năm:</label>
+            <input type="number" class="form-control" id="reportYear" value="{{ now.year }}" min="2000" max="{{ now.year + 5 }}">
+        </div>
+        <div class="col-md-3" id="monthSelectContainer">
+            <label for="reportMonth" class="form-label">Chọn tháng:</label>
+            <select class="form-select" id="reportMonth">
+                {% for i in range(1, 13) %}
+                <option value="{{ i }}" {% if i == now.month %}selected{% endif %}>Tháng {{ i }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3" id="quarterSelectContainer" style="display:none;">
+            <label for="reportQuarter" class="form-label">Chọn quý:</label>
+            <select class="form-select" id="reportQuarter">
+                <option value="1">Quý 1</option>
+                <option value="2">Quý 2</option>
+                <option value="3">Quý 3</option>
+                <option value="4">Quý 4</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-primary w-100" id="generateReportBtn">Tạo Báo Cáo</button>
+        </div>
+    </div>
+
+    ---
+
+    <div id="reportSummary" class="mb-4">
+        <h3>Tóm tắt Doanh thu & Công nợ</h3>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card text-white bg-success mb-3">
+                    <div class="card-header">Tổng Doanh thu</div>
+                    <div class="card-body">
+                        <h5 class="card-title" id="totalRevenue">0 đ</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info mb-3">
+                    <div class="card-header">Tổng Đã thanh toán</div>
+                    <div class="card-body">
+                        <h5 class="card-title" id="totalPaid">0 đ</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-danger mb-3">
+                    <div class="card-header">Tổng Công nợ</div>
+                    <div class="card-body">
+                        <h5 class="card-title" id="totalOutstandingDebt">0 đ</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportDetails">
+        <h3>Chi tiết theo Khách hàng</h3>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Mã KH</th>
+                        <th>Tên Khách hàng</th>
+                        {# UPDATED: Cập nhật tiêu đề cột để phản ánh đúng dữ liệu từ API và gọn hơn #}
+                        <th>Tổng Tiền Hàng (VNĐ)</th>
+                        <th>Tổng Chiết Khấu (VNĐ)</th>
+                        <th>Tổng Hóa Đơn (VNĐ)</th> {# Đây là (Tiền Hàng - Chiết Khấu) của hóa đơn trong kỳ #}
+                        <th>Đã Thanh Toán (VNĐ)</th>
+                        <th>Còn Nợ (Trong kỳ) (VNĐ)</th> {# Đổi tên rõ ràng hơn #}
+                    </tr>
+                </thead>
+                <tbody id="reportTableBody">
+                    <tr><td colspan="8" class="text-center">Vui lòng chọn tiêu chí và tạo báo cáo.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    $(document).ready(function () {
+        // Lấy ngày hiện tại để đặt giá trị mặc định cho năm và tháng
+        const today = new Date();
+        $('#reportYear').val(today.getFullYear());
+        $('#reportMonth').val(today.getMonth() + 1); // Tháng bắt đầu từ 0
+
+        // Ẩn/hiện select tháng/quý dựa trên loại báo cáo
+        $('#reportType').on('change', function() {
+            const type = $(this).val();
+            if (type === 'monthly') {
+                $('#monthSelectContainer').show();
+                $('#quarterSelectContainer').hide();
+            } else if (type === 'quarterly') {
+                $('#monthSelectContainer').hide();
+                $('#quarterSelectContainer').show();
+            } else { // yearly
+                $('#monthSelectContainer').hide();
+                $('#quarterSelectContainer').hide();
+            }
+        }).trigger('change'); // Kích hoạt lần đầu để thiết lập trạng thái ban đầu
+
+        async function generateReport() {
+            const reportType = $('#reportType').val();
+            const year = $('#reportYear').val();
+            let month = null;
+            let quarter = null;
+
+            if (reportType === 'monthly') {
+                month = $('#reportMonth').val();
+            } else if (reportType === 'quarterly') {
+                quarter = $('#reportQuarter').val();
+            }
+
+            console.log(`Generating report for type: ${reportType}, year: ${year}, month: ${month}, quarter: ${quarter}`);
+
+            // Hiển thị trạng thái tải
+            $('#reportTableBody').html('<tr><td colspan="8" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div> Đang tải báo cáo...</td></tr>');
+            $('#totalRevenue').text('Đang tải...');
+            $('#totalPaid').text('Đang tải...');
+            $('#totalOutstandingDebt').text('Đang tải...');
+
+            try {
+                // Xây dựng URL cho API báo cáo
+                let apiUrl = `/reports/summary?year=${year}`;
+                if (reportType === 'monthly') {
+                    apiUrl += `&month=${month}`;
+                } else if (reportType === 'quarterly') {
+                    apiUrl += `&quarter=${quarter}`;
+                }
+
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch report data');
+                }
+                const reportData = await response.json();
+                console.log("Report data received:", reportData);
+
+                // Cập nhật tóm tắt
+                // SỬA ĐỔI TẠI ĐÂY: Dùng formatCurrency với decimalPlaces = 0
+                $('#totalRevenue').text(formatCurrency(reportData.total_revenue || 0, 0));
+                $('#totalPaid').text(formatCurrency(reportData.total_paid_amount || 0, 0));
+                $('#totalOutstandingDebt').text(formatCurrency(reportData.total_customer_debt || 0, 0));
+
+                // Cập nhật chi tiết theo khách hàng
+                const tableBody = $('#reportTableBody');
+                tableBody.empty();
+
+                if (reportData.customer_details && reportData.customer_details.length > 0) {
+                    reportData.customer_details.forEach((detail, index) => {
+                        const row = `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${detail.makh}</td>
+                                <td>${detail.tenkh}</td>
+                                <td>${formatCurrency(detail.total_goods_amount_in_period || 0, 0)}</td>
+                                <td>${formatCurrency(detail.total_discount_amount_in_period || 0, 0)}</td>
+                                <td>${formatCurrency(detail.total_invoice_amount_in_period || 0, 0)}</td>
+                                <td>${formatCurrency(detail.total_paid_amount_in_period || 0, 0)}</td>
+                                <td>${formatCurrency(detail.total_remaining_debt_in_period || 0, 0)}</td>
+                            </tr>
+                        `;
+                        tableBody.append(row);
+                    });
+                } else {
+                    tableBody.html('<tr><td colspan="8" class="text-center">Không có dữ liệu báo cáo cho khoảng thời gian này.</td></tr>');
+                }
+
+            } catch (error) {
+                console.error('Error generating report:', error);
+                $('#reportTableBody').html('<tr><td colspan="8" class="text-danger text-center">Lỗi khi tải báo cáo. Vui lòng thử lại.</td></tr>');
+                $('#totalRevenue').text('Lỗi');
+                $('#totalPaid').text('Lỗi');
+                $('#totalOutstandingDebt').text('Lỗi');
+            }
+        }
+
+        // Gắn sự kiện cho nút tạo báo cáo
+        $('#generateReportBtn').on('click', generateReport);
+
+        // Tự động tạo báo cáo khi tải trang lần đầu
+        generateReport();
+    });
+
+    // Hàm formatNumber không cần định nghĩa lại ở đây vì nó đã có trong base.html
+    // Nếu bạn muốn override hoặc tùy chỉnh, bạn có thể định nghĩa lại nó ở đây.
+</script>
+{% endblock %}

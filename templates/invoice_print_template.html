@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hóa đơn {{ invoice.mahd }} - In ấn</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style id="print-style">
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 11pt;
+            /* Giảm font chữ tổng thể xuống 10pt */
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            /* Dùng flexbox để đẩy footer xuống cuối */
+            flex-direction: column;
+            /* Sắp xếp các phần tử theo cột */
+            min-height: 98vh;
+            /* Đảm bảo body có chiều cao gần bằng trang in */
+        }
+
+        .container-print {
+            max-width: 800px;
+            margin: 5px auto;
+            /* Giảm margin tổng thể */
+            padding: 5px;
+            /* Giảm padding tổng thể */
+            border: 1px solid #ccc;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            flex-grow: 1;
+            /* Cho phép container-print mở rộng để đẩy footer */
+            display: flex;
+            /* Thêm flex để sắp xếp nội dung bên trong */
+            flex-direction: column;
+            /* Sắp xếp nội dung bên trong theo cột */
+        }
+
+        /* Điều chỉnh header */
+        .header-section-new {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            /* Căn trên cùng */
+            margin-bottom: 0px;
+            /* GIẢM MARGIN: Đã điều chỉnh */
+            padding-bottom: 1px;
+            /* GIẢM PADDING: Đã điều chỉnh */
+            border-bottom: 1px dashed #ccc;
+        }
+
+        .header-left {
+            text-align: left;
+            flex-grow: 1;
+            padding-right: 5px;
+            /* Giảm khoảng cách */
+        }
+
+        .header-left h2 {
+            font-size: 14pt;
+            /* Giảm font chữ HÓA ĐƠN */
+            margin-bottom: 0px;
+            /* Đã giảm margin */
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .header-left p {
+            margin: 0;
+            font-size: 8.5pt;
+            /* Giảm font */
+            line-height: 1.1;
+            /* Giảm line-height */
+        }
+
+        .header-right-store-info {
+            text-align: left;
+            flex-shrink: 0;
+            width: 280px;
+            padding-left: 5px;
+            /* Giảm khoảng cách */
+            border-left: 1px dashed #eee;
+        }
+
+        .header-right-store-info h4 {
+            font-size: 10pt;
+            /* Giảm font */
+            margin-bottom: 0;
+            text-decoration: none;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .header-right-store-info p {
+            margin-bottom: 0px;
+            /* Đã giảm margin */
+            font-size: 8.5pt;
+            /* Giảm font */
+            line-height: 1.1;
+            /* Giảm line-height */
+        }
+
+        .header-right-store-info strong {
+            display: inline-block;
+            width: 80px;
+            /* Giảm chiều rộng label */
+            text-align: left;
+            font-weight: normal;
+        }
+
+        .header-right-store-info p span {
+            font-weight: bold;
+        }
+
+        /* Điều chỉnh phần thông tin khách hàng */
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2px;
+            /* GIẢM MARGIN: Đã điều chỉnh */
+            margin-bottom: 3px;
+            /* Giảm margin */
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 2px;
+            /* Giảm padding */
+        }
+
+        .info-block {
+            flex: 1;
+            padding-right: 4px;
+            /* Giảm padding */
+        }
+
+        .info-block:last-child {
+            padding-right: 0;
+            padding-left: 4px;
+            /* Giảm padding */
+            border-left: 1px dashed #eee;
+        }
+
+        .info-block h4 {
+            font-size: 10pt;
+            /* Giảm font */
+            margin-bottom: 2px;
+            /* Giảm margin */
+            text-decoration: underline;
+        }
+
+        .info-block p {
+            margin-bottom: 0px;
+            /* Giảm margin cực nhỏ */
+            font-size: 8.5pt;
+            /* Giảm font */
+            line-height: 1.1;
+            /* Giảm line-height */
+        }
+
+        .info-block strong {
+            display: inline-block;
+            width: 80px;
+            /* Giảm chiều rộng label */
+            text-align: left;
+            font-weight: normal;
+        }
+
+        .info-block p span {
+            font-weight: bold;
+            font-size: 10pt;
+            /* Increased font size for customer name */
+        }
+
+        /* Style cho khối tổng tiền */
+        .totals-section-new {
+            margin-top: 3px;
+            /* Add some space above the totals section */
+            border-top: 1px dashed #ccc;
+            /* Add a top border */
+            padding-top: 3px;
+            /* Add some padding above the totals */
+            text-align: right;
+        }
+
+        .totals-section-new h4 {
+            font-size: 10pt;
+            /* Giảm font */
+            margin-bottom: 2px;
+            /* Giảm margin */
+            text-decoration: underline;
+            text-align: left;
+        }
+
+        .totals-section-new .total-sum-item {
+            margin-bottom: 0px;
+            /* Giảm margin cực nhỏ */
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            font-size: 9pt;
+            /* Giảm font */
+        }
+
+        .totals-section-new .total-sum-item .label {
+            flex-shrink: 0;
+            width: 140px;
+            /* Giảm chiều rộng label */
+            text-align: left;
+            font-weight: normal;
+            padding-left: 2px;
+            /* Giảm padding */
+        }
+
+        .totals-section-new .total-sum-item span:last-child {
+            flex-grow: 1;
+            text-align: right;
+            width: auto;
+            padding-right: 2px;
+            /* Giảm padding */
+            font-weight: bold;
+        }
+
+        .totals-section-new .con-no-value {
+            font-size: 10pt;
+            /* Giảm font */
+            font-weight: bold;
+            color: red;
+        }
+
+        .totals-section-new .con-no-value span:last-child {
+            color: red;
+        }
+
+        .totals-section-new .con-no-text {
+            font-style: italic;
+            color: #555;
+            margin-top: 1px;
+            text-align: right;
+            font-size: 8.5pt;
+            /* Giảm font */
+        }
+
+
+        .invoice-details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 3px;
+            /* Giảm margin */
+            flex-grow: 1;
+        }
+
+        .invoice-details-table th,
+        .invoice-details-table td {
+            border: 1px solid #ccc;
+            padding: 1px 3px;
+            /* Giảm padding đáng kể hơn */
+            text-align: left;
+            font-size: 11pt;
+            /* Giảm font chữ trong bảng */
+            vertical-align: top;
+            line-height: 1.1;
+            /* Giảm line-height trong bảng */
+        }
+
+        .invoice-details-table th {
+            background-color: #f2f2f2;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Chiều rộng cột được giữ nguyên như trước, vì đã khá tối ưu */
+        .invoice-details-table td:nth-child(1) {
+            width: 4%;
+            text-align: center;
+        }
+
+        /* TT */
+        .invoice-details-table td:nth-child(2) {
+            width: auto;
+        }
+
+        /* Sản phẩm */
+        .invoice-details-table td:nth-child(3) {
+            width: 6%;
+            text-align: center;
+        }
+
+        /* ĐVT */
+        .invoice-details-table td:nth-child(4) {
+            width: 8%;
+            text-align: right;
+        }
+
+        /* SL */
+        .invoice-details-table td:nth-child(5) {
+            width: 12%;
+            text-align: right;
+        }
+
+        /* Đơn giá */
+        .invoice-details-table td:nth-child(6) {
+            width: 6%;
+            text-align: center;
+        }
+
+        /* CK (%) */
+        .invoice-details-table td:nth-child(7) {
+            width: 15%;
+            text-align: right;
+        }
+
+        /* Thành tiền */
+
+        .totals-section {
+            display: none;
+        }
+
+        .footer-invoice {
+            margin-top: 10px;
+            /* Giảm margin */
+            text-align: center;
+            display: flex;
+            justify-content: space-around;
+            font-weight: bold;
+            font-size: 8.5pt;
+            /* Giảm font */
+        }
+
+        .signature-block {
+            flex: 1;
+            text-align: center;
+        }
+
+        .signature-title {
+            margin-bottom: 40px;
+            /* Giảm khoảng trống cho chữ ký */
+        }
+
+        .note-text {
+            text-align: center;
+            margin-top: auto;
+            margin-bottom: 0;
+            padding-top: 5px;
+            /* Giảm padding */
+            font-style: italic;
+            font-size: 7.5pt;
+            /* Giảm font chữ nhỏ nhất */
+            color: #777;
+        }
+
+        /* Ẩn các nút điều khiển và modal (nếu có) khi in */
+        @media print {
+
+            .print-controls,
+            .custom-modal {
+                display: none;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 6mm 8mm 5mm 5mm;
+                /* Giảm margin tổng thể cho in ấn */
+            }
+
+            body {
+                margin: 0;
+                padding: 0;
+                min-height: auto;
+            }
+
+            .container-print {
+                border: none;
+                box-shadow: none;
+                margin: 0;
+                padding: 0mm;
+                max-width: none;
+                flex-grow: 0;
+            }
+
+            .info-section,
+            .header-section-new {
+                border-bottom: none !important;
+                border-top: none !important;
+            }
+
+            .info-block:last-child,
+            .header-right-store-info {
+                border-left: none !important;
+            }
+
+            .note-text {
+                position: fixed;
+                bottom: 6mm;
+                /* Cách lề dưới của trang in 6mm */
+                left: 0;
+                right: 0;
+                width: 100%;
+                text-align: center;
+                margin: 0;
+                padding: 0;
+                font-size: 7.5pt;
+                color: #777;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-print">
+        <div class="header-section-new">
+            <div class="header-left">
+                <h2>HÓA ĐƠN</h2>
+                <p>Mã hóa đơn: <strong>{{ invoice.mahd }}</strong></p>
+                <p>Ngày lập: <strong>{{ invoice.ngaylap_formatted }}</strong></p>
+            </div>
+            <div class="header-right-store-info">
+                <p><strong>Tên Cửa hàng:</strong> <span>Cửa hàng Ngọc Huệ</span></p>
+                <p><strong>Địa chỉ:</strong> <span>Chân cầu vượt An Khánh, Phú Vinh, An Khánh, Hà Nội</span></p>
+                <p><strong>Điện thoại:</strong> <span>0936266648-0936068911</span></p>
+            </div>
+        </div>
+
+        <hr style="margin: 3px 0;">
+
+        <div class="info-section">
+            <div class="info-block">
+                <p><strong>Tên KH:</strong> <span>{{ invoice.customer.tenkh or 'N/A' }}</span></p>
+                <p><strong>Địa chỉ/SĐT:</strong> <span>{{ invoice.customer.diachi_sdt or 'N/A' }}</span></p>
+                <p>
+                    <strong>Dư nợ:</strong>
+                    <span id="customer_conno_display">
+                        {{ invoice.customer.conno | default(0) }}
+                    </span> đ
+                </p>
+            </div>
+        </div>
+        <hr style="margin: 3px 0;">
+        <table class="invoice-details-table">
+            <thead>
+                <tr>
+                    <th>TT</th>
+                    <th>Sản phẩm</th>
+                    <th>ĐVT</th>
+                    <th>SL</th>
+                    <th>Đơn giá</th>
+                    <th>CK (%)</th>
+                    <th>TT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detail in invoice.details %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ detail.product.tensp or 'Sản phẩm không xác định' }}</td>
+                    <td>{{ detail.donvi or 'N/A' }}</td>
+                    <td class="numeric-cell">{{ detail.sl }}</td>
+                    <td class="numeric-cell">{{ detail.dongia }}</td>
+                    <td class="numeric-cell">{{ detail.ck }}</td>
+                    <td class="numeric-cell">{{ detail.thanhtien }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center;">Không có chi tiết sản phẩm.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals-section-new">
+            {# BẮT ĐẦU ĐOẠN MÃ CẦN DI CHUYỂN #}
+            {% if invoice.ghichu %}
+            <div class="ghichu-section"
+                style="margin-top: 5px; font-size: 11pt; text-align: left; padding: 2px; border-top: 1px dashed #ccc;">
+                <strong>Ghi chú:</strong> {{ invoice.ghichu }}
+            </div>
+            {% endif %}
+            {# KẾT THÚC ĐOẠN MÃ CẦN DI CHUYỂN #}
+
+            <div class="total-sum-item">
+                <span class="label">Tổng tiền hàng:</span>
+                <span id="total_congtienhang_display" class="numeric-display">
+                    {{ invoice.congtienhang }}
+                </span> đ
+            </div>
+            <div class="total-sum-item">
+                <span class="label">Tổng chiết khấu:</span>
+                <span id="total_congchietkhau_display" class="numeric-display">
+                    {{ invoice.congchietkhau }}
+                </span> đ
+            </div>
+            <div class="total-sum-item">
+                <span class="label">Khách đã thanh toán:</span>
+                <span id="total_khhdathanhtoan_display" class="numeric-display">
+                    {{ invoice.khhdathanhtoan }}
+                </span> đ
+            </div>
+
+            <div class="total-sum-item con-no-value">
+                <span class="label">Chưa thanh toán:</span>
+                <span id="total_conno_display" class="numeric-display">
+                    {{ invoice.conno }}
+                </span> đ
+            </div>
+
+            <div class="con-no-text">
+                <span id="conno_text" style="font-weight: bold;"></span>
+            </div>
+        </div>
+
+        <div class="footer-invoice">
+            <div class="signature-block">
+                <p class="signature-title">Người lập phiếu</p>
+            </div>
+            <div class="signature-block">
+                <p class="signature-title">Khách hàng</p>
+            </div>
+        </div>
+
+        <script>
+            // === HÀM CHUYỂN ĐỔI SỐ THÀNH CHỮ TIẾNG VIỆT ĐÃ SỬA LẠI ===
+            // === HÀM CHUYỂN ĐỔI SỐ THÀNH CHỮ TIẾNG VIỆT ĐÃ SỬA LẠI LẦN NỮA ===
+            // === HÀM CHUYỂN ĐỔI SỐ THÀNH CHỮ TIẾNG VIỆT (KHÔNG XU, LÀM TRÒN ĐẾN ĐƠN VỊ) ===
+            function convertNumberToVietnameseText(number) {
+                const units = ["", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+                const teens = ["mười", "mười một", "mười hai", "mười ba", "mười bốn", "mười lăm", "mười sáu", "mười bảy", "mười tám", "mười chín"];
+                const tens = ["", "mười", "hai mươi", "ba mươi", "bốn mươi", "năm mươi", "sáu mươi", "bảy mươi", "tám mươi", "chín mươi"];
+                const levels = ["", "nghìn", "triệu", "tỷ", "nghìn tỷ", "triệu tỷ", "tỷ tỷ"];
+
+                let integerValue = Math.round(number); // Làm tròn số đến hàng đơn vị
+                let isNegative = integerValue < 0;
+                let absInteger = Math.abs(integerValue);
+
+                if (absInteger === 0) {
+                    return "Không đồng";
+                }
+
+                // Hàm đọc 3 chữ số
+                function readChunk(num) {
+                    let text = "";
+                    const h = Math.floor(num / 100);
+                    const t = Math.floor((num % 100) / 10);
+                    const u = num % 10;
+
+                    if (h > 0) {
+                        text += units[h] + " trăm ";
+                    }
+
+                    if (t === 0 && u === 0) {
+                        // Nothing if all three are zero
+                    } else if (t === 0) { // e.g., 105, 005
+                        text += (h > 0 ? "linh " : "") + units[u];
+                    } else if (t === 1) { // 10-19
+                        text += teens[u];
+                    } else { // 20-99
+                        text += tens[t] + " ";
+                        if (u === 1) text += "mốt";
+                        else if (u === 5) text += "lăm";
+                        else if (u > 0) text += units[u];
+                    }
+                    return text.trim();
+                }
+
+                let resultParts = [];
+                let temp = absInteger;
+                let level = 0;
+
+                // Lặp để tách từng khối 3 chữ số và đọc
+                while (temp > 0 && level < levels.length) {
+                    const chunk = temp % 1000;
+                    temp = Math.floor(temp / 1000);
+
+                    let chunkText = readChunk(chunk);
+
+                    if (chunkText) {
+                        let part = chunkText;
+                        if (levels[level]) { // Thêm cấp độ nếu có
+                            part += " " + levels[level];
+                        }
+                        resultParts.unshift(part); // Thêm vào đầu mảng để giữ đúng thứ tự
+                    } else if (chunk === 0 && temp > 0) {
+                        // Nếu khối là 000 nhưng vẫn còn các khối lớn hơn (temp > 0)
+                        // thì không thêm chữ nhưng vẫn phải tăng level để giữ đúng vị trí
+                        // VD: 1.000.000 (khối nghìn là 000)
+                        // Tuy nhiên, logic unshift đã xử lý phần này.
+                        // Chúng ta chỉ không thêm gì nếu block là 0 và không có chữ.
+                    }
+                    level++;
+                }
+
+                let finalResult = resultParts.join(" ").trim();
+                finalResult = finalResult.replace(/\s+/g, ' '); // Xóa khoảng trắng thừa
+
+                if (absInteger > 0) {
+                    finalResult += " đồng";
+                }
+
+                if (isNegative) {
+                    finalResult = "âm " + finalResult;
+                }
+
+                // Viết hoa chữ cái đầu tiên
+                if (finalResult) {
+                    finalResult = finalResult.charAt(0).toUpperCase() + finalResult.slice(1);
+                } else {
+                    finalResult = "Không đồng"; // Fallback nếu finalResult rỗng (chỉ xảy ra nếu absInteger là 0)
+                }
+
+                return finalResult.replace(/\s+/g, ' ').trim();
+            }
+            function formatNumberDisplay(number, isIntegerOnly = false) {
+                if (typeof number !== 'number') {
+                    number = parseFloat(number);
+                }
+                if (isNaN(number)) {
+                    return '';
+                }
+
+                if (isIntegerOnly) {
+                    // Làm tròn số và định dạng không có phần thập phân
+                    return Math.round(number).toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
+                } else {
+                    // Định dạng số giữ nguyên phần thập phân nếu có, hoặc không có nếu là số nguyên
+                    let parts = number.toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 10 // Đủ số chữ số thập phân để không bị cắt bớt
+                    }).split('.');
+
+                    // Kiểm tra nếu phần thập phân chỉ có số 0, thì bỏ đi
+                    if (parts.length > 1 && parseFloat('0.' + parts[1]) === 0) {
+                        return parts[0];
+                    }
+                    return parts.join('.');
+                }
+            }
+
+            // Hàm để cập nhật CSS @page
+            function setPrintPaperSizeAndOrientation(size, orientation = 'portrait') {
+                const styleTag = document.getElementById('print-style');
+                if (!styleTag) {
+                    console.error("Style tag with ID 'print-style' not found.");
+                    return;
+                }
+
+                let currentCss = styleTag.innerHTML;
+
+                // Xóa bỏ quy tắc @media print chứa @page cũ nếu có
+                currentCss = currentCss.replace(/(@media\s*print\s*{[\s\S]*?@page\s*{[\s\S]*?}[\s\S]*?})/s, '');
+
+                // Thêm quy tắc @page mới với khổ và hướng đã chọn
+                const newPageRule = `
+                @media print {
+                    @page {
+                        size: ${size} ${orientation};
+                        margin: 6mm 8mm 6mm 8mm; /* Đã điều chỉnh margin */
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        min-height: auto;
+                    }
+                    .container-print {
+                        border: none;
+                        box-shadow: none;
+                        margin: 0;
+                        padding: 0mm;
+                        max-width: none;
+                        flex-grow: 0;
+                    }
+                    .info-section, .header-section-new {
+                        border-bottom: none !important;
+                        border-top: none !important;
+                    }
+                    .info-block:last-child, .header-right-store-info {
+                        border-left: none !important;
+                    }
+                    .note-text {
+                        position: fixed;
+                        bottom: 6mm; /* Đã điều chỉnh bottom */
+                        left: 0;
+                        right: 0;
+                        width: 100%;
+                        text-align: center;
+                        margin: 0;
+                        padding: 0;
+                        font-size: 7.5pt;
+                        color: #777;
+                    }
+                }
+                `;
+                styleTag.innerHTML = currentCss + newPageRule;
+                console.log(`Đã đặt khổ giấy in thành: ${size} ${orientation}`);
+            }
+
+            window.onload = function () {
+                // Định dạng các số trong bảng chi tiết
+                document.querySelectorAll('.invoice-details-table .numeric-cell').forEach(cell => {
+                    // Lấy giá trị thô
+                    let rawText = cell.textContent.trim();
+                    // Loại bỏ TẤT CẢ các dấu phẩy (,) trước khi parse. 
+                    // Điều này giả định định dạng số bạn đang dùng là 300,000,000 hoặc 1,234.50
+                    // Nếu có cả dấu chấm và dấu phẩy, cần cẩn thận hơn.
+                    // NHƯNG nếu chỉ dùng DẤU PHẨY làm phân cách hàng nghìn, thì chỉ loại bỏ dấu phẩy là đủ.
+                    rawText = rawText.replace(/,/g, '');
+
+                    const rawValue = parseFloat(rawText);
+
+                    const columnIndex = cell.cellIndex;
+                    if (columnIndex === 3 || columnIndex === 5) { // Cột SL và CK (%)
+                        cell.textContent = formatNumberDisplay(rawValue, false);
+                    } else if (columnIndex === 4 || columnIndex === 6) { // Cột Đơn giá và Thành tiền
+                        cell.textContent = formatNumberDisplay(rawValue, true);
+                    } else {
+                        cell.textContent = formatNumberDisplay(rawValue, false);
+                    }
+                });
+
+                // Định dạng các số tổng cộng
+                document.querySelectorAll('.totals-section-new .numeric-display').forEach(span => {
+                    let rawText = span.textContent.trim();
+                    rawText = rawText.replace(/,/g, ''); // Loại bỏ TẤT CẢ dấu phẩy
+                    const rawValue = parseFloat(rawText);
+                    span.textContent = formatNumberDisplay(rawValue, true);
+                });
+
+                // Khởi tạo và định dạng giá trị "Dư nợ" của khách hàng
+                const customerConnoElement = document.getElementById('customer_conno_display');
+                let customerConno = 0;
+                if (customerConnoElement) {
+                    let rawText = customerConnoElement.textContent.trim();
+                    rawText = rawText.replace(/,/g, ''); // Loại bỏ TẤT CẢ dấu phẩy
+                    customerConno = parseFloat(rawText);
+                    if (isNaN(customerConno)) {
+                        customerConno = 0;
+                    }
+                }
+                customerConnoElement.textContent = formatNumberDisplay(customerConno, true);
+
+                // BẮT ĐẦU PHẦN QUAN TRỌNG: ĐỌC GIÁ TRỊ "CHƯA THANH TOÁN" CỦA HÓA ĐƠN BẰNG CHỮ
+                const invoiceConnoDisplayElement = document.getElementById('total_conno_display');
+                let invoiceConnoValue = 0;
+
+                if (invoiceConnoDisplayElement) {
+                    let textValue = invoiceConnoDisplayElement.textContent.trim();
+                    // CHỈ LOẠI BỎ DẤU PHẨY (,) VÌ BẠN ĐANG DÙNG NÓ LÀM PHÂN CÁCH HÀNG NGHÌN
+                    textValue = textValue.replace(/,/g, '');
+
+                    // Sau khi loại bỏ dấu phẩy, chuỗi sẽ là "300000000", parseFloat sẽ xử lý đúng
+                    invoiceConnoValue = parseFloat(textValue);
+
+                    if (isNaN(invoiceConnoValue)) {
+                        invoiceConnoValue = 0;
+                        console.warn("Lỗi: Không thể chuyển đổi giá trị 'Chưa thanh toán' (total_conno_display) thành số:", invoiceConnoDisplayElement.textContent);
+                    }
+                }
+
+                // Sử dụng invoiceConnoValue đã được làm sạch để chuyển sang chữ
+                let amountInWords = "";
+                if (invoiceConnoValue < 0) {
+                    amountInWords = "Khách hàng trả thừa " + convertNumberToVietnameseText(Math.abs(invoiceConnoValue)).toLowerCase();
+                } else if (invoiceConnoValue > 0) {
+                    amountInWords = convertNumberToVietnameseText(invoiceConnoValue);
+                } else {
+                    amountInWords = "Không đồng";
+                }
+                document.getElementById('conno_text').innerText = amountInWords;
+                // KẾT THÚC PHẦN QUAN TRỌNG
+
+                setPrintPaperSizeAndOrientation('A4', 'portrait');
+                window.print();
+            };
+        </script>
+</body>
+
+</html>

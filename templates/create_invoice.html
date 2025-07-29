@@ -1,0 +1,1292 @@
+{% extends "base.html" %}
+{% block title %}Tạo Hóa Đơn Mới{% endblock %}
+
+{% block content %}
+<form id="invoiceForm">
+    <input type="hidden" id="oldInvoiceMahdToCancelHidden">
+
+    <div class="row mb-3">
+        {# Cột bên trái cho phần tìm kiếm và thêm sản phẩm #}
+        <div class="col-md-7">
+            <div class="row align-items-end mb-3">
+                <div class="col-md-7"> {# Tăng kích thước cột cho Select2: Từ 6 lên 7 #}
+                    <select class="form-control" id="productToAddSelect" style="width: 100%;">
+                        <option value="">Tìm kiếm và chọn sản phẩm...</option>
+                    </select>
+                </div>
+                <div class="col-md-5"> {# Điều chỉnh kích thước cột để chứa SL và các nút: Từ 4 lên 5 #}
+                    <div class="d-flex align-items-center">
+                        {# Ô SỐ LƯỢNG MỚI #}
+                        <input type="text" class="form-control text-center" id="quantityToAdd" value="0"
+                            style="width: 78px;" aria-label="Số lượng thêm"> {# Tăng width từ 60px lên 78px (60 * 1.3 =
+                        78) #}
+
+                        <button type="button" class="btn btn-primary ms-2" id="addNewProductToTable">Thêm dòng</button>
+                        <button type="button" class="btn btn-success btn-sm ms-2" id="openAddProductModal">
+                            +SP
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Cột bên phải gom thông tin hóa đơn và khách hàng vào một "bảng" (sử dụng Card để tạo khối) #}
+        <div class="col-md-5">
+            <div class="card p-3"> {# Sử dụng card để tạo khối nhìn như một bảng #}
+                {# Đã bỏ h6 class="card-title mb-3">Thông tin Hóa Đơn</h6> theo yêu cầu #}
+                <div class="row mb-2">
+                    <div class="col-md-6">
+                        <label for="mahd" class="form-label">Mã Hóa Đơn</label>
+                        <input type="text" class="form-control" id="mahd" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="ngaylap" class="form-label">Ngày Lập</label>
+                        <input type="date" class="form-control" id="ngaylap" value="{{ today }}" required>
+                    </div>
+                </div>
+                <div class="row align-items-center mb-1"> {# Giảm mb-2 xuống mb-1 để sát hơn #}
+                    <label for="makh" class="form-label col-auto">Khách Hàng</label>
+                    <div class="col">
+                        <select class="form-control" id="makh" required style="width: 100%;">
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-primary btn-sm" id="addCustomerBtn" data-bs-toggle="modal"
+                            data-bs-target="#addCustomerModal">
+                            + KH
+                        </button>
+                    </div>
+                </div>
+                <div class="row"> {# Dòng mới cho "Còn nợ" #}
+                    <div class="col-12 text-end">
+                        <span class="text-danger fw-bold" id="customerDebtDisplay">Còn nợ: 0 VNĐ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+    <h3>Chi tiết hóa đơn</h3>
+
+    <div class="row mb-2 header-row">
+        <div class="col-item text-center" style="width: 5%;"><strong>STT</strong></div>
+        <div class="col-item" style="width: 28%;"><strong>Sản phẩm</strong></div>
+        <div class="col-item text-center" style="width: 8%;"><strong>ĐVT</strong></div>
+        <div class="col-item text-center" style="width: 8%;"><strong>SL</strong></div>
+        <div class="col-item text-center" style="width: 15%;"><strong>Đơn giá</strong></div>
+        <div class="col-item text-center" style="width: 8%;"><strong>CK (%)</strong></div>
+        <div class="col-item text-center" style="width: 20%;"><strong>Thành tiền</strong></div>
+        <div class="col-item text-center" style="width: 8%;"><strong>Hành động</strong></div>
+    </div>
+
+    <div id="invoiceDetails">
+    </div>
+
+    <hr>
+    <div class="row mb-3">
+        <div class="col-md-3 col-sm-6 mb-2">
+            <label for="congtienhang" class="form-label">Tổng tiền hàng</label>
+            <input type="text" class="form-control" id="congtienhang" readonly>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-2">
+            <label for="congchietkhau" class="form-label">Tổng chiết khấu</label>
+            <input type="text" class="form-control" id="congchietkhau" readonly>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-2">
+            <label for="khhdathanhtoan" class="form-label">Khách đã thanh toán</label>
+            <input type="text" class="form-control" id="khhdathanhtoan" value="0">
+        </div>
+        <div class="col-md-3 col-sm-6 mb-2">
+            <label for="conno" class="form-label">Chưa thanh toán</label>
+            <input type="text" class="form-control text-danger fw-bold" id="conno" readonly>
+            <p class="form-control-plaintext text-danger fw-bold" id="conno_chu" style="font-size: 0.95em;"></p>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="nguoilap" class="form-label">Người Lập</label>
+            <input type="text" class="form-control" id="nguoilap" value="{{ current_user.username }}" readonly>
+        </div>
+        <div class="col-md-6">
+            <label for="ghichu" class="form-label">Ghi Chú</label>
+            <textarea class="form-control" id="ghichu" rows="1"></textarea>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" id="submitInvoiceBtn">Tạo Hóa Đơn</button>
+</form>
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="newProductForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addProductModalLabel">Thêm Sản phẩm Mới</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="newProductTensp" class="form-label">Tên Sản phẩm</label>
+                        <input type="text" class="form-control" id="newProductTensp" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newProductDonvi" class="form-label">Đơn vị tính</label>
+                        <input type="text" class="form-control" id="newProductDonvi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newProductDongia" class="form-label">Đơn giá</label>
+                        <input type="text" class="form-control" id="newProductDongia" step="0.01" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newProductTonkho" class="form-label">Tồn kho</label>
+                        <input type="number" class="form-control" id="newProductTonkho" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newProductGhichu" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="newProductGhichu" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary">Lưu Sản phẩm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+<div class="modal fade" id="addCustomerModal" tabindex="-1" aria-labelledby="addCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCustomerModalLabel">Thêm Khách hàng mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newCustomerForm">
+                    <div class="mb-3">
+                        <label for="newCustomerTenkh" class="form-label">Tên Khách hàng</label>
+                        <input type="text" class="form-control" id="newCustomerTenkh" name="tenkh" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newCustomerDiachiSdt" class="form-label">Địa chỉ/SĐT</label>
+                        <input type="text" class="form-control" id="newCustomerDiachiSdt" name="diachi_sdt">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newCustomerGhichu" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="newCustomerGhichu" name="ghichu" rows="3"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-primary">Lưu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{# NEW: Modal để hiển thị lịch sử BÁN #}
+<div class="modal fade" id="priceHistoryModal" tabindex="-1" aria-labelledby="priceHistoryModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl"> {# Tăng kích thước modal để chứa nhiều cột hơn #}
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="priceHistoryModalLabel">Lịch sử Bán của <span
+                        id="historyProductName"></span> (5 lần gần nhất)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="priceHistoryContent">
+                    <p class="text-center text-muted">Đang tải lịch sử bán...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+
+<script>
+    let itemCounter = 0;
+    // let oldMahdToCancel = null; // BIẾN NÀY KHÔNG CÒN CẦN THIẾT
+    let isFormDirty = false;
+    let initialFormState = [];
+    const $historyProductName = $('#historyProductName');
+    const $priceHistoryContent = $('#priceHistoryContent');
+    const priceHistoryModal = new bootstrap.Modal(document.getElementById('priceHistoryModal'));
+    function captureCurrentFormState() {
+        const details = [];
+        $('.invoice-item-row').each(function () {
+            const masp = $(this).find('.masp-hidden').val();
+            // Chỉ lấy các sản phẩm đã được chọn (có masp). Bỏ qua các dòng trống.
+            if (masp) {
+                details.push({
+                    masp: masp,
+                    sl: parseFloat($(this).find('.quantity').val()) || 0,
+                    dongia: parseFormattedNumber($(this).find('.price').val()),
+                    ck: parseFloat($(this).find('.discount').val()) || 0
+                });
+            }
+        });
+
+        // RẤT QUAN TRỌNG: Sắp xếp mảng details để đảm bảo thứ tự nhất quán khi so sánh JSON.
+        // Điều này giúp phát hiện thay đổi chính xác, bất kể thứ tự người dùng thêm/xóa dòng.
+        details.sort((a, b) => {
+            if (a.masp < b.masp) return -1;
+            if (a.masp > b.masp) return 1;
+            // Nếu masp giống nhau, sắp xếp thêm theo các thuộc tính khác để đảm bảo tính nhất quán
+            if (a.sl !== b.sl) return a.sl - b.sl;
+            if (a.dongia !== b.dongia) return a.dongia - b.dongia;
+            if (a.ck !== b.ck) return a.ck - b.ck;
+            return 0;
+        });
+
+        return details; // Chỉ trả về mảng chi tiết sản phẩm
+    }
+    // Cập nhật số thứ tự (STT) cho các dòng sản phẩm
+    function checkFormDirty() {
+        const currentFormState = captureCurrentFormState();
+        return JSON.stringify(initialFormState) !== JSON.stringify(currentFormState);
+    }
+    async function resetFormToNewInvoiceState() {
+        console.log("resetFormToNewInvoiceState: Bắt đầu reset form.");
+
+        // 1. Reset các trường input chính của form về giá trị mặc định hoặc rỗng
+        $('#invoiceForm')[0].reset();
+        $('#mahd').val(''); // Đặt rỗng tạm thời trước khi fetch mã mới
+        $('#khhdathanhtoan').val(formatCurrency(0)); // Bỏ tham số '0' thừa
+
+        // 2. Clear các Select2
+        $('#makh').val(null).trigger('change');
+        $('#productToAddSelect').val(null).trigger('change');
+
+        // 3. Set ngày lập hiện tại
+        $('#ngaylap').val(new Date().toISOString().split('T')[0]);
+
+        // 4. Xóa các dòng sản phẩm chi tiết trong bảng và reset bộ đếm
+        $('#invoiceDetails').empty();
+        itemCounter = 0; // Đặt lại bộ đếm sản phẩm để các ID mới không bị trùng
+
+        // 5. Tính toán lại tổng tiền (sẽ là 0 vì không có sản phẩm)
+        calculateInvoiceTotals();
+
+        // 6. Xóa mã hóa đơn nháp khỏi sessionStorage TRƯỚC KHI LẤY MÃ MỚI
+        // Điều này CỰC KỲ QUAN TRỌNG để đảm bảo mã cũ không bị tái sử dụng.
+        console.log("Debug: Attempting to remove currentDraftInvoiceMahd from sessionStorage...");
+        sessionStorage.removeItem('currentDraftInvoiceMahd');
+        console.log("Debug: currentDraftInvoiceMahd removed from sessionStorage (if existed).");
+
+        // 7. Lấy mã hóa đơn hoàn toàn mới từ backend và đặt vào form
+        // Hàm fetchAndSetInvoiceCode() sẽ đặt mã mới vào #mahd và cũng lưu vào sessionStorage
+        await fetchAndSetInvoiceCode();
+
+        // 8. Cập nhật trạng thái form và URL của trình duyệt
+        initialFormState = captureCurrentFormState(); // Cập nhật trạng thái ban đầu của form mới
+        isFormDirty = false; // Đặt lại trạng thái form là không dirty
+        window.history.pushState({}, '', '/create-invoice-page'); // Xóa tham số ?mahd khỏi URL
+
+        // 9. Cập nhật văn bản nút và tiêu đề
+        $('#submitInvoiceBtn').text('Tạo Hóa đơn mới');
+        $('#invoiceFormTitle').text('Tạo Hóa đơn mới');
+
+        // 10. Cập nhật cờ chế độ và hiển thị/ẩn nút refresh mã
+        isEditMode = false; // Đặt lại cờ chế độ là tạo mới
+        $('#refreshInvoiceCodeBtn').show(); // Đảm bảo nút refresh mã hiện thị
+
+        console.log("Debug: Form reset complete. Ready for new invoice.");
+    }
+    function updateItemSTT() {
+        $('.invoice-item-row').each(function (idx) {
+            $(this).find('.item-stt').val(idx + 1);
+        });
+        updateRemoveButtonsVisibility(); // Đảm bảo nút xóa luôn được cập nhật
+    }
+
+    // Thêm một dòng sản phẩm mới vào hóa đơn (Đã thay đổi đáng kể)
+    function addInvoiceItemRow(productData = {}, initialQuantity = 0) {
+        const index = itemCounter++; // Tăng biến đếm và gán chỉ số
+        const rowId = `invoice-item-row-${index}`;
+
+        // --- LOGIC ĐỊNH DẠNG SỐ LƯỢNG CHO HIỂN THỊ BAN ĐẦU ---
+        // Chúng ta muốn 21.0 thành 21, nhưng 21.5 vẫn giữ nguyên 21.5
+        // Và đồng thời áp dụng formatNumber với minFraction=1, maxFraction=3
+        let displayQuantity;
+        if (typeof initialQuantity === 'number' && !isNaN(initialQuantity)) {
+            // Nếu là số nguyên và không có phần thập phân đáng kể, chuyển đổi thành số nguyên
+            // Sử dụng một ngưỡng nhỏ để tránh lỗi dấu phẩy động (ví dụ: 21.000000000000001)
+            if (Math.abs(initialQuantity - Math.round(initialQuantity)) < 1e-9) {
+                displayQuantity = Math.round(initialQuantity); // Làm tròn để loại bỏ .0
+            } else {
+                displayQuantity = initialQuantity; // Giữ nguyên số thập phân
+            }
+        } else {
+            displayQuantity = 0; // Giá trị mặc định nếu không phải số hợp lệ
+        }
+        // Sau đó áp dụng hàm formatNumber của bạn cho giá trị đã xử lý
+        const formattedDisplayQuantity = formatNumber(displayQuantity, 1, 3);
+        // --- KẾT THÚC LOGIC ĐỊNH DẠNG SỐ LƯỢNG ---
+
+        const rowHtml = `
+        <div class="row mb-2 invoice-item-row product-item-row" id="${rowId}" data-index="${index}">
+            <div class="col-item text-center" style="width: 5%;">
+                <input type="text" class="form-control item-stt text-center" value="${index + 1}" readonly>
+            </div>
+            <div class="col-item" style="width: 30%;">
+                <input type="hidden" class="masp-hidden" id="masp_${index}" value="${productData.masp || ''}">
+                <input type="text" class="form-control tensp-display" id="tensp_${index}" value="${productData.tensp || ''}" readonly>
+            </div>
+            <div class="col-item text-center" style="width: 7%;">
+                <input type="text" class="form-control donvi text-center" id="donvi_${index}" value="${productData.donvi || ''}" readonly>
+            </div>
+            <div class="col-item text-center" style="width: 8%;">
+                <input type="text" class="form-control quantity text-center" id="sl_${index}" value="${formattedDisplayQuantity}" min="0" step="any" required>
+            </div>
+            <div class="col-item text-center" style="width: 15%;">
+                <input type="text" class="form-control price text-end" id="dongia_${index}" value="${formatCurrency(productData.dongia || 0)}" required>
+            </div>
+            <div class="col-item text-center" style="width: 7%;">
+                <input type="text" class="form-control discount text-center" id="ck_${index}" value="${formatNumber(productData.ck || 0, 0, 2)}" min="0" max="100" step="any">
+            </div>
+            <div class="col-item text-end" style="width: 20%;">
+                <input type="text" class="form-control subtotal text-end" id="thanhtien_${index}" readonly>
+            </div>
+            <div class="col-item d-flex align-items-end justify-content-end" style="width: 6%;">
+                <button type="button" class="btn btn-sm btn-outline-secondary view-price-history-row-btn me-1"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="Xem lịch sử giá"
+                        data-masp="${productData.masp || ''}" data-tensp="${productData.tensp || ''}">
+                    <i class="bi bi-clock-history"></i>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm remove-item ${index === 0 ? 'd-none' : ''}"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="Xóa dòng">Xóa</button>
+            </div>
+        </div>
+        `;
+        $('#invoiceDetails').append(rowHtml);
+        const appendedQuantityValue = $(`#sl_${index}`).val();
+        console.log(`Debug: After appending row ${rowId}, quantity input value: ${appendedQuantityValue}. Expected: ${formattedDisplayQuantity}`);
+
+
+        // =========================================================================
+        // LOGIC CẬP NHẬT isFormDirty VÀ KHỞI TẠO TOOLTIP (SỬ DỤNG rowId ĐÃ ĐỊNH NGHĨA)
+        // =========================================================================
+        // Quan trọng: Khi thêm một dòng mới, form chắc chắn là dirty,
+        // trừ khi đây là dòng trống đầu tiên của một form mới hoàn toàn và không có masp.
+        // Logic checkFormDirty() nên xử lý chi tiết này.
+        isFormDirty = checkFormDirty();
+        console.log(`addInvoiceItemRow: isFormDirty checked: ${isFormDirty}`);
+
+
+        // THÊM SỰ KIỆN BLUR ĐỂ ĐỊNH DẠNG LẠI GIÁ TRỊ SAU KHI NGƯỜI DÙNG NHẬP
+        $(`#sl_${index}`).on('input', function () {
+            calculateRowSubtotal(index);
+            calculateInvoiceTotals();
+            isFormDirty = checkFormDirty();
+            console.log(`Form dirty (item input change on index ${index}):`, isFormDirty);
+        }).on('blur', function () {
+            // Sau khi người dùng rời khỏi ô, parse giá trị và định dạng lại để đảm bảo dấu chấm
+            const rawValue = parseFormattedNumber($(this).val());
+            // Áp dụng lại logic định dạng 21.0 -> 21
+            let valueToFormat = rawValue;
+            if (typeof rawValue === 'number' && !isNaN(rawValue)) {
+                if (Math.abs(rawValue - Math.round(rawValue)) < 1e-9) {
+                    valueToFormat = Math.round(rawValue);
+                }
+            }
+            $(this).val(formatNumber(valueToFormat, 1, 3)); // SL thường có 1-3 chữ số thập phân
+        });
+
+        $(`#dongia_${index}`).on('input', function () {
+            calculateRowSubtotal(index);
+            calculateInvoiceTotals();
+            isFormDirty = checkFormDirty();
+            console.log(`Form dirty (item input change on index ${index}):`, isFormDirty);
+        }).on('blur', function () {
+            // Sau khi người dùng rời khỏi ô, parse giá trị và định dạng lại để đảm bảo dấu chấm và formatCurrency
+            const rawValue = parseFormattedNumber($(this).val());
+            $(this).val(formatCurrency(rawValue)); // Tiền tệ luôn là số nguyên, không có thập phân
+        });
+
+        $(`#ck_${index}`).on('input', function () {
+            calculateRowSubtotal(index);
+            calculateInvoiceTotals();
+            isFormDirty = checkFormDirty();
+            console.log(`Form dirty (item input change on index ${index}):`, isFormDirty);
+        }).on('blur', function () {
+            // Sau khi người dùng rời khỏi ô, parse giá trị và định dạng lại để đảm bảo dấu chấm
+            const rawValue = parseFormattedNumber($(this).val());
+            $(this).val(formatNumber(rawValue, 0, 2)); // CK thường là số nguyên hoặc có 1-2 chữ số thập phân
+        });
+
+        // Chỉ tính toán thành tiền ban đầu nếu có sản phẩm được thêm (productData.masp)
+        // và initialQuantity > 0 (nếu bạn muốn).
+        // Tuy nhiên, việc tính toán lại total luôn là tốt sau khi thêm dòng.
+        calculateRowSubtotal(index); // Đảm bảo tính toán thành tiền cho dòng mới ngay lập tức
+        calculateInvoiceTotals(); // Cập nhật tổng hóa đơn
+
+        // Logic ẩn/hiện nút xóa dòng đầu tiên
+        // Nút xóa chỉ bị ẩn nếu đây là dòng đầu tiên (index === 0) VÀ không có masp (tức là dòng trống ban đầu)
+        if (index === 0 && !productData.masp) {
+            $(`#${rowId} .remove-item`).addClass('d-none');
+        } else {
+            $(`#${rowId} .remove-item`).removeClass('d-none');
+        }
+
+        // Khởi tạo tooltip cho các nút trên dòng này
+        $(`#${rowId} .view-price-history-row-btn`).tooltip();
+        $(`#${rowId} .remove-item`).tooltip();
+    }
+    function calculateRowSubtotal(index) {
+        const quantity = parseFormattedNumber($(`#sl_${index}`).val()); // SỬ DỤNG PARSE
+        const price = parseFormattedNumber($(`#dongia_${index}`).val()); // SỬ DỤNG PARSE
+        const discount = parseFormattedNumber($(`#ck_${index}`).val()); // SỬ DỤNG PARSE
+
+        const originalAmount = quantity * price;
+        const discountAmount = originalAmount * (discount / 100);
+        const subtotal = originalAmount - discountAmount;
+
+        $(`#thanhtien_${index}`).val(formatCurrency(subtotal)); // DÙNG FORMAT
+        calculateInvoiceTotals();
+    }
+    function calculateInvoiceTotals() {
+        let totalGoodsAmount = 0;
+        let totalDiscountAmount = 0;
+        let totalInvoiceAmount = 0;
+
+        $('.invoice-item-row').each(function () {
+            const index = $(this).data('index');
+            // VẤN ĐỀ 1: SỬ DỤNG parseFormattedNumber cho quantity và discount
+            const quantity = parseFormattedNumber($(`#sl_${index}`).val());
+            const price = parseFormattedNumber($(`#dongia_${index}`).val());
+            const discount = parseFormattedNumber($(`#ck_${index}`).val());
+
+            const originalItemAmount = quantity * price;
+            const itemDiscountAmount = originalItemAmount * (discount / 100);
+            const itemSubtotal = originalItemAmount - itemDiscountAmount;
+
+            totalGoodsAmount += originalItemAmount;
+            totalDiscountAmount += itemDiscountAmount;
+            totalInvoiceAmount += itemSubtotal;
+        });
+
+        // VẤN ĐỀ 2: Bỏ tham số '0' thừa khi gọi formatCurrency
+        $('#congtienhang').val(formatCurrency(totalGoodsAmount));
+        $('#congchietkhau').val(formatCurrency(totalDiscountAmount));
+        // Đảm bảo bạn có input với id="tongtienhoadon" trong HTML nếu muốn hiển thị tổng số tiền
+        $('#tongtienhoadon').val(formatCurrency(totalInvoiceAmount));
+
+        const paidAmount = parseFormattedNumber($('#khhdathanhtoan').val());
+        const remainingDebt = totalInvoiceAmount - paidAmount;
+
+        // VẤN ĐỀ 2: Bỏ tham số '0' thừa khi gọi formatCurrency
+        $('#conno').val(formatCurrency(remainingDebt));
+
+        // Update "Tổng tiền hóa đơn (bằng chữ)"
+        // VẤN ĐỀ 3: Đảm bảo có element với ID 'tongtienhoadon_chu' trong HTML
+        // Hàm convertNumberToVietnameseText đã tự thêm "đồng" hoặc "xu", nên không thêm " đ" ở đây
+        $('#tongtienhoadon_chu').text(convertNumberToVietnameseText(totalInvoiceAmount));
+
+        // >>> SỬA LOGIC CỦA "CÒN NỢ (BẰNG CHỮ)" <<<
+        let connoText = "";
+        if (remainingDebt < 0) {
+            // Hàm convertNumberToVietnameseText đã tự thêm "đồng" hoặc "xu" vào cuối.
+            // Tránh thêm " đ" một lần nữa.
+            connoText = "Khách hàng trả thừa " + convertNumberToVietnameseText(Math.abs(remainingDebt));
+        } else if (remainingDebt > 0) {
+            connoText = convertNumberToVietnameseText(remainingDebt);
+        } else {
+            // Nếu không nợ, hiển thị "Đã thanh toán đủ" hoặc "Không đồng"
+            connoText = "Đã thanh toán đủ"; // Hoặc "Không đồng" nếu phù hợp hơn
+        }
+        // Update the HTML element with id "conno_chu"
+        $('#conno_chu').text(connoText);
+    }
+    // Cập nhật hiển thị nút xóa
+    function updateRemoveButtonsVisibility() {
+        // Nếu có nhiều hơn 1 dòng, hiển thị tất cả nút xóa
+        if ($('.invoice-item-row').length > 1) {
+            $('.remove-item').removeClass('d-none');
+        }
+        // Nếu chỉ còn 1 dòng, ẩn nút xóa trên dòng đó
+        else if ($('.invoice-item-row').length === 1) {
+            $('.remove-item').addClass('d-none');
+        }
+        // Nếu không có dòng nào (ví dụ: vừa xóa dòng cuối cùng), không làm gì cả (vì không có nút để ẩn)
+    }
+
+    // Xử lý sự kiện click nút xóa
+    $(document).on('click', '.remove-item', function () {
+        $(this).closest('.invoice-item-row').remove();
+        calculateInvoiceTotals();
+        updateItemSTT(); // Cập nhật lại STT sau khi xóa
+        isFormDirty = checkFormDirty(); // CẬP NHẬT isFormDirty KHI XÓA ITEM
+        console.log("Form dirty (after remove item, via click):", isFormDirty);
+    });
+
+    // Hàm fetchAndSetInvoiceCode() nếu bạn có
+    async function fetchAndSetInvoiceCode() {
+        console.log("fetchAndSetInvoiceCode: Đang lấy mã hóa đơn mới.");
+        try {
+            // 1. SỬA ĐỔI URL: Thêm dấu gạch chéo '/' ở cuối
+            const response = await fetch('/invoices/generate_code/');
+
+            if (!response.ok) {
+                console.error('Failed to fetch new invoice code. Status:', response.status);
+                const errorText = await response.text(); // Lấy nội dung lỗi dưới dạng text
+                console.error('Error response text from backend:', errorText);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: `Không thể tạo mã hóa đơn mới. Lỗi server: ${response.status} - ${errorText.substring(0, 100)}`
+                });
+                throw new Error('Không thể tạo mã hóa đơn mới.');
+            }
+
+            // 2. SỬA ĐỔI CÁCH ĐỌC PHẢN HỒI: Backend trả về chuỗi thuần túy (str), không phải JSON
+            const newCode = await response.text();
+
+            // Backend của bạn trả về str, nhưng đôi khi có thể có dấu ngoặc kép thừa (ví dụ: "ABC")
+            // Đoạn này giúp loại bỏ chúng nếu có.
+            const cleanedCode = newCode.replace(/^"|"$/g, '').replace(/\\"/g, '');
+
+            if (cleanedCode) {
+                $('#mahd').val(cleanedCode);
+                sessionStorage.setItem('currentDraftInvoiceMahd', cleanedCode); // Nên lưu vào sessionStorage nếu bạn muốn giữ mã này cho nháp
+                console.log('Successfully set new invoice code:', cleanedCode);
+            } else {
+                console.error('API returned an empty or invalid code.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: 'API trả về mã hóa đơn rỗng hoặc không hợp lệ.'
+                });
+                $('#mahd').val('LỖI_MÃ_RỖNG');
+            }
+
+        } catch (error) {
+            console.error("Lỗi khi tạo mã hóa đơn:", error);
+            $('#mahd').val('LỖI_MÃ');
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi!',
+                text: 'Không thể kết nối đến server để tạo mã hóa đơn hoặc có lỗi khác. Vui lòng kiểm tra console để biết thêm chi tiết.'
+            });
+        }
+    }
+
+
+    let selectedProductFromSelect2 = null; // Khai báo hoặc đảm bảo nó đã tồn tại
+
+    $(document).ready(function () {
+        console.log("jQuery document ready! Initializing all functions and logic inside.");
+        // itemCounter = 0; // Đã là biến toàn cục, không cần khai báo lại
+
+        async function updateCustomerSelect2(selectCustomerId = null) {
+            console.log('Updating customer Select2...');
+            try {
+                const select = $('#makh');
+                if (selectCustomerId) {
+                    const response = await fetch(`/customers/${selectCustomerId}`);
+                    if (response.ok) {
+                        const customer = await response.json();
+                        if (!select.find(`option[value="${customer.makh}"]`).length) {
+                            const newOption = new Option(customer.tenkh, customer.makh, true, true);
+                            select.append(newOption).trigger('change');
+                        } else {
+                            select.val(customer.makh).trigger('change');
+                        }
+                        $('#customerDebtDisplay').text(`Còn nợ: ${formatNumber(customer.conno || 0)} VNĐ`);
+                    }
+                } else {
+                    select.val(null).trigger('change');
+                    $('#customerDebtDisplay').text(`Còn nợ: ${formatNumber(0)} VNĐ`);
+                }
+                console.log('Customer Select2 updated.');
+            } catch (error) {
+                console.error('Error updating customer Select2:', error);
+                Swal.fire('Lỗi', 'Không thể cập nhật danh sách khách hàng.', 'error');
+            }
+        }
+
+        async function updateProductSelect2(selectProductId = null) {
+            console.log('Updating product Select2...');
+            try {
+                const select = $('#productToAddSelect');
+                if (selectProductId) {
+                    const response = await fetch(`/products/${selectProductId}`);
+                    if (response.ok) {
+                        const product = await response.json();
+                        if (!select.find(`option[value="${product.masp}"]`).length) {
+                            const newOption = new Option(`${product.tensp} - ${product.donvi} - ${formatNumber(product.dongia)} VNĐ`, product.masp, true, true);
+                            $(newOption).data('product', product);
+                            select.append(newOption).trigger('change');
+                        } else {
+                            select.val(product.masp).trigger('change');
+                        }
+                    }
+                } else {
+                    select.val(null).trigger('change');
+                }
+                console.log('Product Select2 updated.');
+            } catch (error) {
+                console.error('Error updating product Select2:', error);
+                Swal.fire('Lỗi', 'Không thể cập nhật danh sách sản phẩm.', 'error');
+            }
+        }
+
+        async function initializeInvoiceForm() {
+            $('#ngaylap').val(new Date().toISOString().split('T')[0]);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const invoiceMahd = urlParams.get('mahd');
+
+            if (invoiceMahd) { // Chế độ chỉnh sửa
+                console.log(`Loading existing invoice: ${invoiceMahd}`);
+                try {
+                    const response = await fetch(`/invoices/detail/${invoiceMahd}`);
+                    if (!response.ok) {
+                        // In ra chi tiết phản hồi lỗi nếu có thể
+                        const errorText = await response.text();
+                        console.error('Failed to fetch invoice details. Status:', response.status, 'Response:', errorText);
+                        throw new Error('Failed to fetch invoice details: ' + errorText);
+                    }
+                    const invoice = await response.json();
+
+                    $('#mahd').val(invoice.mahd);
+                    updateCustomerSelect2(invoice.makh);
+                    $('#ngaylap').val(invoice.ngaylap);
+                    $('#khhdathanhtoan').val(formatCurrency(invoice.khhdathanhtoan, 0));
+                    $('#nguoilap').val(invoice.nguoilap);
+                    $('#ghichu').val(invoice.ghichu || '').trigger('input');
+
+                    $('#invoiceDetails').empty();
+                    itemCounter = 0; // Reset itemCounter khi tải lại chi tiết
+
+                    invoice.details.forEach(detail => {
+                        console.log("Product Detail:", detail);
+                        console.log("Quantity (detail.sl):", detail.sl);
+
+                        // >>>>>> ĐIỂM SỬA CHỮA QUAN TRỌNG NHẤT Ở ĐÂY <<<<<<
+                        addInvoiceItemRow(
+                            { // Tham số productData
+                                masp: detail.masp,
+                                tensp: detail.product.tensp,
+                                donvi: detail.donvi,
+                                dongia: detail.dongia,
+                                ck: detail.ck,
+                                // BỎ 'sl: detail.sl' RA KHỎI ĐÂY
+                            },
+                            detail.sl // >>>>>> TRUYỀN detail.sl VÀO ĐỐI SỐ THỨ HAI CHO initialQuantity <<<<<<
+                        );
+                    });
+                    $('#submitInvoiceBtn').text('Cập nhật Hóa đơn'); // Thay đổi văn bản nút
+                    $('#invoiceFormTitle').text('Chỉnh sửa Hóa đơn'); // Thay đổi tiêu đề form (tùy chọn)
+                    calculateInvoiceTotals();
+                    isFormDirty = false;
+                    console.log('Invoice form initialized for edit mode. isFormDirty:', isFormDirty);
+                } catch (error) {
+                    console.error('Error loading invoice:', error);
+                    Swal.fire('Lỗi', 'Không thể tải chi tiết hóa đơn.', 'error');
+                }
+            } else { // Chế độ tạo hóa đơn mới
+                console.log('Creating new invoice...');
+                const currentDraftMahd = sessionStorage.getItem('currentDraftInvoiceMahd');
+                if (currentDraftMahd) {
+                    $('#mahd').val(currentDraftMahd);
+                    console.log('Restored draft invoice code:', currentDraftMahd);
+                } else {
+                    await fetchAndSetInvoiceCode();
+                }
+
+                calculateInvoiceTotals();
+                isFormDirty = checkFormDirty(); // Ban đầu form có thể không dirty nếu chỉ có dòng trống
+                console.log('Invoice form initialized for new mode. isFormDirty:', isFormDirty);
+            }
+        }
+        // =========================================================================
+        $('#makh').select2({
+            placeholder: 'Tìm khách hàng...',
+            allowClear: true,
+            ajax: {
+                url: '/customers/',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        search: params.term,
+                        limit: 15
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data.customers, function (item) {
+                            return {
+                                id: item.makh,
+                                text: item.tenkh,
+                                conno: item.conno
+                            };
+                        })
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2
+        });
+
+        $('#makh').on('select2:select', function (e) {
+            const data = e.params.data;
+            $('#customerDebtDisplay').text(`Còn nợ: ${formatNumber(data.conno || 0)} VNĐ`);
+        });
+        $('#makh').on('select2:clear', function (e) {
+            $('#customerDebtDisplay').text(`Còn nợ: ${formatNumber(0)} VNĐ`);
+        });
+
+        $('#productToAddSelect').select2({
+            placeholder: 'Tìm kiếm và chọn sản phẩm...',
+            allowClear: true,
+            ajax: {
+                url: '/products/',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        search_query: params.term, // SỬ DỤNG search_query CHO PRODUCTS
+                        limit: 50
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data.products, function (item) {
+                            let productText = `${item.tensp} - ${item.donvi} - ${formatNumber(item.dongia)} đ`;
+
+                            // THÊM DÒNG NÀY ĐỂ BỔ SUNG GHI CHÚ
+                            if (item.ghichu) { // Kiểm tra nếu ghi chú không phải null, undefined, rỗng, 0, false
+                                productText += ` (${item.ghichu})`;
+                            }
+                            return {
+                                id: item.masp,
+                                text: productText, // Sử dụng productText đã có ghi chú
+                                product: item
+                            };
+                        })
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2
+        });
+
+        $(document).on('focus', '.quantity, .price, .discount', function () {
+            // 'this' ở đây là phần tử input được focus (có thể là quantity, price hoặc discount)
+            $(this).select(); // Chọn toàn bộ văn bản trong input
+            console.log(`Input with class ${this.className} focused. All text selected.`);
+        });
+
+        $('#openAddCustomerModal').on('click', function () {
+            $('#newCustomerForm')[0].reset();
+            $('#addCustomerModal').modal('show'); // Đã sửa từ addCustomerModal
+        });
+
+        $('#newCustomerForm').on('submit', async function (event) {
+            event.preventDefault();
+            const newCustomerData = {
+                tenkh: $('#newCustomerTenkh').val(),
+                diachi_sdt: $('#newCustomerDiachiSdt').val(),
+                ghichu: $('#newCustomerGhichu').val()
+            };
+
+            try {
+                const response = await fetch('/customers/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newCustomerData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to add new customer');
+                }
+
+                const addedCustomer = await response.json();
+                Swal.fire('Thành công!', 'Đã thêm khách hàng mới.', 'success');
+                const customerModal = bootstrap.Modal.getInstance(document.getElementById('addCustomerModal')) || new bootstrap.Modal(document.getElementById('addCustomerModal')); // Đã sửa
+                customerModal.hide(); // Sử dụng ID đúng của modal khách hàng
+
+                const select = $('#makh');
+                if (!select.find(`option[value="${addedCustomer.makh}"]`).length) {
+                    const newOption = new Option(addedCustomer.tenkh, addedCustomer.makh, true, true);
+                    select.append(newOption);
+                }
+                select.val(addedCustomer.makh).trigger('change');
+                $('#newCustomerForm')[0].reset();
+            } catch (error) {
+                console.error('Lỗi khi thêm khách hàng mới:', error);
+                Swal.fire('Lỗi', `Không thể thêm khách hàng: ${error.message}`, 'error');
+            }
+        });
+
+        $('#openAddProductModal').on('click', function () {
+            $('#newProductForm')[0].reset();
+            $('#addProductModal').modal('show');
+        });
+
+        $('#newProductForm').on('submit', async function (event) {
+            event.preventDefault();
+            const ghichuValue = $('#newProductGhichu').val().trim();
+
+            // Lấy giá trị tồn kho từ input mới
+            const tonkhoValue = $('#newProductTonkho').val();
+            const parsedTonkho = parseFloat(tonkhoValue); // Chuyển đổi sang số
+
+            const newProductData = {
+                tensp: $('#newProductTensp').val(),
+                donvi: $('#newProductDonvi').val(),
+                dongia: parseFloat($('#newProductDongia').val()),
+                tonkho: parsedTonkho || 0, // Thêm trường tồn kho vào đây. Sử dụng parsedTonkho và mặc định là 0 nếu không hợp lệ
+                ghichu: ghichuValue || null
+            };
+
+            try {
+                const response = await fetch('/products/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newProductData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to add new product');
+                }
+
+                const addedProduct = await response.json();
+                Swal.fire('Thành công!', 'Đã thêm sản phẩm mới.', 'success');
+                $('#addProductModal').modal('hide');
+
+                const select = $('#productToAddSelect');
+                if (!select.find(`option[value="${addedProduct.masp}"]`).length) {
+                    const newOption = new Option(`${addedProduct.tensp} - ${addedProduct.donvi} - ${formatNumber(addedProduct.dongia)} VNĐ`, addedProduct.masp, true, true);
+                    $(newOption).data('product', addedProduct);
+                    select.append(newOption);
+                }
+                select.val(addedProduct.masp).trigger('change');
+
+                // Tự động thêm sản phẩm vừa tạo vào chi tiết hóa đơn
+                addInvoiceItemRow(addedProduct);
+                updateItemSTT();
+                calculateInvoiceTotals();
+
+            } catch (error) {
+                console.error('Lỗi khi thêm sản phẩm mới:', error);
+                Swal.fire('Lỗi', `Không thể thêm sản phẩm: ${error.message}`, 'error');
+            }
+        });
+
+        $('#productToAddSelect').on('select2:select', function (e) {
+            // 1. Lưu đối tượng sản phẩm đầy đủ vào biến global/scope để sử dụng với phím Enter/Space
+            selectedProductFromSelect2 = e.params.data.product;
+            console.log("Selected product for keyboard add:", selectedProductFromSelect2);
+
+            // 2. Chuyển focus ngay lập tức tới ô số lượng
+            // Sử dụng setTimeout để đảm bảo Select2 đã hoàn tất việc đóng dropdown và DOM ổn định
+            setTimeout(() => {
+                $('#quantityToAdd').focus().select();
+                console.log("Focused on quantity input.");
+            }, 50); // Khoảng thời gian nhỏ (50ms) để Select2 hoàn tất việc xử lý
+        });
+
+        // Lắng nghe sự kiện khi lựa chọn bị hủy (clear) từ Select2
+        $('#productToAddSelect').on('select2:unselect', function (e) {
+            selectedProductFromSelect2 = null; // Xóa sản phẩm đã chọn
+            console.log("Product unselected from Select2.");
+        });
+
+        $('#quantityToAdd').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Ngăn chặn hành vi mặc định của Enter (như submit form)
+                $('#addNewProductToTable').trigger('click');
+            }
+        });
+        // ADD PRODUCT TO TABLE FROM SELECT2
+        $('#addNewProductToTable').on('click', function () {
+            const selectedProductData = $('#productToAddSelect').select2('data');
+
+            if (selectedProductData && selectedProductData.length > 0 && selectedProductData[0].product) {
+                const productToAdd = selectedProductData[0].product;
+                const quantityToAdd = parseFloat($('#quantityToAdd').val());
+
+                if (isNaN(quantityToAdd) || quantityToAdd <= 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Lỗi số lượng!',
+                        text: 'Số lượng thêm vào phải là một số dương lớn hơn 0.'
+                    });
+                    $('#quantityToAdd').focus().select();
+                    return;
+                }
+
+                const existingProductIdsInTable = [];
+                $('.invoice-item-row').each(function () {
+                    const maspInRow = $(this).find('.masp-hidden').val();
+                    if (maspInRow) {
+                        existingProductIdsInTable.push(maspInRow);
+                    }
+                });
+
+                if (existingProductIdsInTable.includes(String(productToAdd.masp))) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sản phẩm đã tồn tại!',
+                        text: 'Sản phẩm này đã có trong danh sách chi tiết hóa đơn. Vui lòng tăng số lượng nếu bạn muốn thêm nữa.'
+                    });
+                    // Vẫn cần reset và focus ở đây nếu sản phẩm đã tồn tại
+                    $('#productToAddSelect').val(null).trigger('change');
+                    $('#quantityToAdd').val('0'); // Reset số lượng về 0
+                    // Quan trọng: Focus vào ô tìm kiếm sản phẩm
+                    // Sử dụng setTimeout để Select2 có đủ thời gian xử lý trigger('change')
+                    setTimeout(() => {
+                        $('#productToAddSelect').select2('open'); // Mở Select2 để sẵn sàng gõ
+                    }, 50);
+                    selectedProductFromSelect2 = null;
+                    return;
+                }
+
+                console.log("Adding new row with product:", productToAdd, "and quantity:", quantityToAdd);
+                addInvoiceItemRow(productToAdd, quantityToAdd);
+
+                updateItemSTT();
+                calculateInvoiceTotals();
+                $('#productToAddSelect').val(null).trigger('change');
+                // 2. Reset ô số lượng về 0
+                $('#quantityToAdd').val('0');
+                setTimeout(() => {
+                    $('#productToAddSelect').select2('open');
+                }, 50);
+                // --- KẾT THÚC CÁC DÒNG QUAN TRỌNG ---
+
+                selectedProductFromSelect2 = null; // Reset biến global
+
+                isFormDirty = checkFormDirty();
+                console.log("Form dirty (after addNewProductToTable click):", isFormDirty);
+
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Chưa chọn sản phẩm!',
+                    text: 'Vui lòng chọn một sản phẩm từ danh sách trước khi thêm.'
+                });
+                // Nếu chưa chọn sản phẩm, vẫn muốn quay lại ô tìm kiếm
+                setTimeout(() => {
+                    $('#productToAddSelect').select2('open');
+                }, 50);
+            }
+        });
+
+        $('#ngaylap, #nguoilap, #ghichu').on('input', function () {
+            isFormDirty = true;
+            console.log(`Form dirty (main invoice field input: ${this.id}):`, isFormDirty);
+        });
+
+        $('#khhdathanhtoan').on('input', function () {
+            calculateInvoiceTotals();
+            isFormDirty = true; // Thay đổi số tiền đã thanh toán cũng làm form dirty
+            console.log("Form dirty (khhdathanhtoan input):", isFormDirty);
+        });
+        $('#khhdathanhtoan').on('blur', function () {
+            const rawValue = parseFormattedNumber($(this).val()) || 0;
+            $(this).val(formatNumber(rawValue));
+        });
+        $(document).on('click', '.view-price-history-row-btn', async function () {
+            const masp = $(this).data('masp');
+            const tensp = $(this).data('tensp');
+
+            if (!masp) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy mã sản phẩm để xem lịch sử giá.'
+                });
+                return;
+            }
+
+            $historyProductName.text(tensp);
+            $priceHistoryContent.html('<p class="text-center text-muted">Đang tải lịch sử giá...</p>');
+            priceHistoryModal.show();
+
+            try {
+                const response = await fetch(`/products/${masp}/sales_history`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        $priceHistoryContent.html('<p class="text-center text-info">Không tìm thấy lịch sử giá cho sản phẩm này.</p>');
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                } else {
+                    const historyData = await response.json();
+                    displaySalesHistory(historyData);
+                }
+            } catch (error) {
+                console.error('Error fetching price history:', error);
+                $priceHistoryContent.html('<p class="text-center text-danger">Lỗi khi tải lịch sử giá. Vui lòng thử lại.</p>');
+            }
+        });
+        // NEW: Hàm hiển thị lịch sử giá trong modal
+        function displaySalesHistory(historyData) {
+            if (!Array.isArray(historyData) || historyData.length === 0) {
+                $priceHistoryContent.html('<p class="text-center text-info">Chưa có lịch sử bán cho sản phẩm này.</p>');
+                return;
+            }
+
+            let html = `
+        <table class="table table-striped table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Mã HĐ</th>
+                    <th>Ngày Bán</th>
+                    <th>Khách Hàng</th>
+                    <th>SL</th>
+                    <th>Đơn giá</th>
+                    <th>CK (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+            historyData.forEach(item => {
+                html += `
+            <tr>
+                <td>${item.mahd}</td>
+                <td>${formatDate(item.ngaylap)}</td>
+                <td>${item.customer_name}</td>
+                <td>${formatNumber(item.sl)}</td>
+                <td>${formatCurrency(item.dongia)}</td>
+                <td>${item.ck || 0}%</td>
+            </tr>
+        `;
+            });
+
+            html += `
+            </tbody>
+        </table>
+    `;
+
+            $priceHistoryContent.html(html);
+        }
+
+        $('form#invoiceForm').on('submit', async function (e) {
+            e.preventDefault();
+
+            const invoiceDetails = [];
+            let isValid = true;
+
+            $('.invoice-item-row').each(function () {
+                const index = $(this).data('index');
+                const maspVal = $(`#masp_${index}`).val();
+
+                // >>> BẮT ĐẦU SỬA CHỮA CHÍNH: slVal <<<
+                // Lấy giá trị chuỗi thô từ input SL
+                const slInputVal = $(`#sl_${index}`).val();
+                // CHUYỂN ĐỔI CHUỖI SANG SỐ FLOAT BẰNG parseFormattedNumber
+                const slValParsed = parseFormattedNumber(slInputVal);
+                // >>> KẾT THÚC SỬA CHỮA CHÍNH <<<
+
+                const dongiaInputVal = $(`#dongia_${index}`).val();
+                const dongiaValParsed = parseFormattedNumber(dongiaInputVal);
+
+                console.log(`--- Debug Dongia Dòng ${index} ---`);
+                console.log(`Giá trị HIỂN THỊ trong input dongia: "${dongiaInputVal}"`);
+                console.log(`Giá trị ĐÃ PARSE được (dongiaValParsed): ${dongiaValParsed}`);
+                console.log(`Kiểu dữ liệu của dongiaValParsed: ${typeof dongiaValParsed}`);
+
+                // Thêm debug cho SL để chắc chắn
+                console.log(`--- Debug SoLuong Dòng ${index} ---`);
+                console.log(`Giá trị HIỂN THỊ trong input sl: "${slInputVal}"`);
+                console.log(`Giá trị ĐÃ PARSE được (slValParsed): ${slValParsed}`);
+                console.log(`Kiểu dữ liệu của slValParsed: ${typeof slValParsed}`);
+
+                const ckVal = parseFloat($(`#ck_${index}`).val());
+
+                if (isNaN(ckVal) || ckVal < 0 || ckVal > 100) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Lỗi nhập liệu!',
+                        text: 'Chiết khấu phải là một số từ 0 đến 100 cho sản phẩm ' + $(`#tensp_${index}`).val() + '.'
+                    });
+                    isValid = false;
+                    return false;
+                }
+                if (isNaN(dongiaValParsed)) {
+                    console.error(`Lỗi: dongiaValParsed cho dòng ${index} là NaN. Vui lòng kiểm tra hàm parseFormattedNumber và định dạng số.`);
+                }
+                // Bỏ qua các dòng rỗng (chưa chọn sản phẩm)
+                if (!maspVal) {
+                    return true;
+                }
+
+                // >>> SỬA VALIDATION slVal: dùng slValParsed <<<
+                if (isNaN(slValParsed) || slValParsed <= 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Lỗi nhập liệu!',
+                        text: 'Số lượng phải là một số dương lớn hơn 0 cho sản phẩm ' + $(`#tensp_${index}`).val() + '.'
+                    });
+                    isValid = false;
+                    return false;
+                }
+                // >>> KẾT THÚC SỬA VALIDATION slVal <<<
+
+                if (dongiaValParsed < 0) { // Đã sửa tên biến từ dongiaVal sang dongiaValParsed
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Lỗi nhập liệu!',
+                        text: 'Đơn giá không thể là số âm cho sản phẩm ' + $(`#tensp_${index}`).val() + '.'
+                    });
+                    isValid = false;
+                    return false;
+                }
+
+                invoiceDetails.push({
+                    masp: parseInt(maspVal),
+                    donvi: $(`#donvi_${index}`).val(),
+                    sl: slValParsed, // <<< ĐÂY LÀ CHỖ QUAN TRỌNG NHẤT: SỬ DỤNG GIÁ TRỊ ĐÃ PARSE
+                    dongia: dongiaValParsed,
+                    ck: parseFloat($(`#ck_${index}`).val()),
+                    thanhtien: parseFormattedNumber($(`#thanhtien_${index}`).val())
+                });
+            });
+
+            if (!isValid) {
+                return;
+            }
+
+            if (invoiceDetails.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Lỗi!',
+                    text: 'Hóa đơn phải có ít nhất một sản phẩm chi tiết.'
+                });
+                return;
+            }
+
+            const makhVal = $('#makh').val();
+            if (!makhVal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Lỗi nhập liệu!',
+                    text: 'Vui lòng chọn khách hàng.'
+                });
+                return;
+            }
+
+            const mahdCurrent = $('#mahd').val();
+
+            const invoiceData = {
+                mahd: mahdCurrent,
+                makh: parseInt(makhVal),
+                ngaylap: $('#ngaylap').val(),
+                khhdathanhtoan: parseFormattedNumber($('#khhdathanhtoan').val()),
+                nguoilap: $('#nguoilap').val(),
+                ghichu: $('#ghichu').val(),
+                details: invoiceDetails,
+            };
+
+            let url = '/invoices/';
+            let method = 'POST';
+            let successMessage = 'Hóa đơn đã được tạo thành công!';
+
+            const isEditMode = (new URLSearchParams(window.location.search).get('mahd') !== null);
+
+            if (isEditMode) {
+                url = `/invoices/detail/${mahdCurrent}`;
+                method = 'PUT';
+                successMessage = 'Hóa đơn đã được cập nhật thành công!';
+            }
+
+            console.log(`Sending ${method} request to ${url} with data:`, invoiceData);
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(invoiceData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    Swal.fire({
+                        icon: 'error',
+                        title: `Lỗi ${method === 'PUT' ? 'cập nhật' : 'tạo'} hóa đơn!`,
+                        text: errorData.detail || 'Đã xảy ra lỗi không xác định.'
+                    });
+                    return;
+                }
+
+                const resultInvoice = await response.json(); // Lấy hóa đơn trả về từ backend
+                if (resultInvoice.customer && resultInvoice.customer.conno !== undefined) {
+                    // Cập nhật phần tử hiển thị công nợ.
+                    // Đảm bảo #customerDebtDisplay là ID chính xác của phần tử đó trên HTML của bạn.
+                    $('#customerDebtDisplay').text(`Còn nợ: ${formatNumber(resultInvoice.customer.conno)} VNĐ`);
+                    console.log(`Cập nhật công nợ khách hàng trên UI: ${formatNumber(resultInvoice.customer.conno)} VNĐ`);
+                } else {
+                    console.warn("Không tìm thấy thông tin công nợ khách hàng trong phản hồi sau khi lưu hóa đơn.");
+                }
+                let finalSuccessMessage = successMessage;
+                if (method === 'POST' && resultInvoice && resultInvoice.mahd) {
+                    finalSuccessMessage = `Hóa đơn đã được tạo thành công với mã: ${resultInvoice.mahd}.`;
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: finalSuccessMessage + '\nBạn có muốn in hóa đơn này không?',
+                    showCancelButton: true, // Hiển thị nút "Cancel"
+                    confirmButtonText: 'In hóa đơn', // Văn bản cho nút chính (Confirm)
+                    cancelButtonText: 'Không in', // Văn bản cho nút phụ (Cancel)
+                    reverseButtons: true // Đảo ngược thứ tự nút (nút chính bên trái, nút phụ bên phải)
+                }).then(async (result) => {
+                    currentInvoiceDetails = resultInvoice; // Gán hóa đơn vừa lưu vào biến global
+
+                    if (result.isConfirmed) {
+                        // Người dùng đã chọn "In hóa đơn"
+                        printInvoiceDetails(); // Gọi hàm in hóa đơn
+                    } else if (result.dismiss === Swal.DismissReason.cancel) {
+                        // Người dùng đã chọn "Không in" hoặc đóng hộp thoại
+                        console.log("Người dùng chọn không in hóa đơn.");
+                    }
+
+                    // Luôn reset form sau khi đã lưu thành công và xử lý tùy chọn in
+                    await resetFormToNewInvoiceState();
+                });
+                // --- KẾT THÚC ĐOẠN CODE SỬA ĐỔI ---
+
+            } catch (error) {
+                console.error(`Error ${method === 'PUT' ? 'updating' : 'creating'} invoice:`, error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: 'Đã xảy ra lỗi khi lưu hóa đơn. Vui lòng kiểm tra console để biết thêm chi tiết.'
+                });
+            }
+        });
+
+        // Initialize form when document is ready
+        initializeInvoiceForm();
+
+        $(window).on('beforeunload', function () {
+            if (isFormDirty) {
+                return 'Bạn có dữ liệu chưa lưu. Bạn có chắc chắn muốn rời đi?';
+            }
+        });
+
+    }); // End of $(document).ready
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Đăng Nhập{% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-4">
+        <div class="card shadow p-4">
+            <h2 class="card-title text-center mb-4">Đăng Nhập</h2>
+            {# Thêm một div để hiển thị thông báo từ JavaScript #}
+            <div id="loginMessage" class="alert d-none" role="alert"></div>
+            
+            <form id="loginForm"> {# Đảm bảo form có id là "loginForm" #}
+                <div class="mb-3">
+                    <label for="username" class="form-label">Tên đăng nhập</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Mật khẩu</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Đăng Nhập</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Đặt script này ngay trong login.html hoặc trong một file JS riêng và nhúng vào login.html
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('loginForm');
+        const loginMessage = document.getElementById('loginMessage');
+
+        if (loginForm) {
+            loginForm.addEventListener('submit', async function(event) {
+                event.preventDefault(); // Ngăn chặn submit form truyền thống
+
+                loginMessage.classList.add('d-none'); // Ẩn thông báo cũ
+                loginMessage.textContent = '';
+
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    const response = await fetch('/login', { // Gọi endpoint API /login
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json' // Gửi dữ liệu dưới dạng JSON
+                        },
+                        body: JSON.stringify({ username: username, password: password }) // Chuyển đổi object thành JSON string
+                    });
+
+                    const data = await response.json(); // Phân tích phản hồi JSON
+
+                    if (response.ok) {
+                        // Lưu token vào sessionStorage
+                        sessionStorage.setItem('access_token', data.access_token);
+                        sessionStorage.setItem('token_type', data.token_type);
+
+                        loginMessage.classList.remove('d-none', 'alert-danger');
+                        loginMessage.classList.add('alert-success');
+                        loginMessage.textContent = 'Đăng nhập thành công! Đang chuyển hướng...';
+                        
+                        // Chuyển hướng người dùng sau 1 giây
+                        setTimeout(() => {
+                            window.location.href = '/'; 
+                        }, 1000); 
+
+                    } else {
+                        loginMessage.classList.remove('d-none', 'alert-success');
+                        loginMessage.classList.add('alert-danger');
+                        loginMessage.textContent = data.detail || 'Đăng nhập thất bại!';
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi đăng nhập:', error);
+                    loginMessage.classList.remove('d-none', 'alert-success');
+                    loginMessage.classList.add('alert-danger');
+                    loginMessage.textContent = 'Đã xảy ra lỗi mạng hoặc hệ thống.';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

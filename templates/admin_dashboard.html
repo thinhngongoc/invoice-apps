@@ -1,0 +1,114 @@
+{% extends "base.html" %} {# Kế thừa từ layout cơ bản của bạn #}
+
+{% block title %}Bảng Điều Khiển Quản Trị{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="fas fa-tools"></i> Bảng Điều Khiển Quản Trị
+            </h1>
+            <p class="lead">Chào mừng, **{{ current_user.username }}**! Đây là khu vực dành riêng cho quản trị viên.</p>
+            {% if current_user.is_admin %}
+            <p class="text-success">Bạn có quyền quản trị viên đầy đủ.</p>
+            {% else %}
+            <p class="text-warning">Bạn không có quyền quản trị viên.</p>
+            {% endif %}
+
+            <hr>
+
+            {# Flash Messages (nếu có) #}
+            {% if request.session.get('flash_message') %}
+            <div class="alert alert-{{ request.session.pop('flash_category', 'info') }} alert-dismissible fade show" role="alert">
+                {{ request.session.pop('flash_message') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-users-cog"></i> Quản lý Người dùng</h5>
+                            <p class="card-text">Thêm, sửa, xóa hoặc xem chi tiết tài khoản người dùng.</p>
+                            <a href="#" class="btn btn-primary btn-sm">Truy cập</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-cogs"></i> Cài đặt Hệ thống</h5>
+                            <p class="card-text">Cấu hình các thiết lập chung của ứng dụng.</p>
+                            <a href="#" class="btn btn-secondary btn-sm">Truy cập</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-chart-line"></i> Báo cáo & Thống kê</h5>
+                            <p class="card-text">Xem các báo cáo và số liệu thống kê chi tiết.</p>
+                            <a href="#" class="btn btn-info btn-sm">Truy cập</a>
+                        </div>
+                    </div>
+                </div>
+
+                {# CARD ĐẶT LẠI MẬT KHẨU CHO NGƯỜI DÙNG (CHỈ HIỂN THỊ NẾU LÀ ADMIN) #}
+                {% if current_user.is_admin %}
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-key"></i> Đặt lại Mật khẩu Người dùng</h5>
+                            <p class="card-text">Đặt lại mật khẩu cho bất kỳ tài khoản người dùng nào.</p>
+                            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#adminResetPasswordModal">
+                                Đặt lại Mật khẩu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {# Bạn có thể thêm nhiều card chức năng khác tại đây #}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# MODAL ĐẶT LẠI MẬT KHẨU CHO NGƯỜI DÙNG (CHỈ ADMIN) #}
+<div class="modal fade" id="adminResetPasswordModal" tabindex="-1" aria-labelledby="adminResetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adminResetPasswordModalLabel">Đặt lại Mật khẩu Người dùng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminResetPasswordForm">
+                    <div class="mb-3">
+                        <label for="targetUsername" class="form-label">Tên người dùng cần đặt lại mật khẩu:</label>
+                        <input type="text" class="form-control" id="targetUsername" name="target_username" required minlength="3" maxlength="50">
+                    </div>
+                    <div class="mb-3">
+                        <label for="adminNewPassword" class="form-label">Mật khẩu mới:</label>
+                        <input type="password" class="form-control" id="adminNewPassword" name="new_password" required minlength="6" maxlength="50">
+                    </div>
+                    <div class="mb-3">
+                        <label for="adminConfirmNewPassword" class="form-label">Xác nhận mật khẩu mới:</label>
+                        <input type="password" class="form-control" id="adminConfirmNewPassword" name="confirm_new_password" required minlength="6" maxlength="50">
+                    </div>
+                    <button type="submit" class="btn btn-warning">Đặt lại Mật khẩu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# Giữ lại các script từ base.html nếu có #}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/static/js/auth.js"></script> {# DÒNG NÀY SẼ TẢI TẤT CẢ LOGIC TỪ FILE AUTH.JS #}
+{% endblock %}

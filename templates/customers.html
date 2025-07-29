@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Khách hàng{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    Quản lý khách hàng
+    <span id="totalCustomersDisplay" class="badge bg-secondary ms-2"></span>
+</h2>
+
+<div class="row mb-3 align-items-center">
+    <div class="col-md-9"> <div class="input-group">
+            <input type="text" class="form-control" id="customerSearchInput"
+                placeholder="Tìm kiếm theo tên khách hàng...">
+            <button class="btn btn-outline-secondary" type="button" id="customerSearchBtn">Tìm</button>
+        </div>
+    </div>
+    <div class="col-md-3 text-end"> <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#customerModal"
+            id="addCustomerBtn">
+            Thêm Khách hàng mới
+        </button>
+    </div>
+</div>
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>Mã KH</th>
+                <th>Tên Khách hàng</th>
+                <th>Địa chỉ/SĐT</th>
+                <th>Tổng Tiền hàng
+                    (Tổng các HĐ)
+                </th>
+                <th>Tổng CK
+                    (Tổng các HĐ)
+                </th>
+                <th>Đã Thanh toán
+                    (Tổng các HĐ)
+                </th>
+                <th>Công nợ</th>
+                <th>Ghi chú</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody id="customersTableBody">
+            <tr>
+                <td colspan="10" class="text-center">Đang tải dữ liệu...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<nav aria-label="Customer pagination" class="mt-3">
+    <ul class="pagination justify-content-center" id="customerPaginationControls">
+    </ul>
+</nav>
+<div class="modal fade" id="customerModal" tabindex="-1" aria-labelledby="customerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customerModalLabel">Thêm/Sửa Khách hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="customerForm">
+                    <input type="hidden" id="customerMakh">
+                    <div class="mb-3">
+                        <label for="customerTenkh" class="form-label">Tên Khách hàng</label>
+                        <input type="text" class="form-control" id="customerTenkh" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="customerDiachiSdt" class="form-label">Địa chỉ/SĐT</label>
+                        <input type="text" class="form-control" id="customerDiachiSdt">
+                    </div>
+                    <div class="mb-3">
+                        <label for="customerGhichu" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="customerGhichu" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="customerInvoicesModal" tabindex="-1" aria-labelledby="customerInvoicesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg"> <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customerInvoicesModalLabel">Hóa đơn của Khách hàng: <span id="customerInvoicesModalCustomerName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Mã HĐ</th>
+                                <th>Ngày lập</th>
+                                <th>Tổng tiền hàng</th>
+                                <th>Tổng CK</th>
+                                <th>Đã thanh toán</th>
+                                <th>Còn nợ</th>
+                                <th>Trạng thái</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerInvoicesTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">Đang tải hóa đơn...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <nav aria-label="Invoice pagination" class="mt-3">
+                    <ul class="pagination justify-content-center" id="customerInvoicePaginationControls">
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    // Định nghĩa các biến toàn cục cho phân trang khách hàng
+    let currentCustomerPage = 1; // Trang hiện tại cho khách hàng
+    const customerItemsPerPage = 10; // Số lượng khách hàng trên mỗi trang (có thể điều chỉnh)
+    let totalCustomers = 0; // Tổng số khách hàng từ API
+    let currentCustomerInvoicePage = 1;
+    const customerInvoiceItemsPerPage = 10; // Số lượng hóa đơn trên mỗi trang trong modal
+    let currentCustomerIdForInvoices = null; // Lưu trữ mã khách hàng đang xem hóa đơn
+    async function fetchCustomers(page = currentCustomerPage, searchQuery = '') {
+        // Cập nhật trang hiện tại
+        currentCustomerPage = page;
+        const skip = (currentCustomerPage - 1) * customerItemsPerPage;
+
+        try {
+            let url = `/customers/?skip=${skip}&limit=${customerItemsPerPage}`; // Thêm tham số phân trang
+            if (searchQuery) {
+                url += `&search=${encodeURIComponent(searchQuery)}`;
+            }
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('Failed to fetch customers');
+            }
+
+            const data = await response.json();
+            const customers = data.customers;
+            totalCustomers = data.total_count; // Biến này đã nhận được giá trị từ backend
+
+            // Cập nhật hiển thị tổng số khách hàng
+            $('#totalCustomersDisplay').text(totalCustomers); // <<< DÒNG MỚI ĐÃ THÊM
+
+            const tableBody = $('#customersTableBody');
+            tableBody.empty();
+
+            if (customers.length === 0) {
+                tableBody.append('<tr><td colspan="10" class="text-center">Chưa có khách hàng nào.</td></tr>');
+                $('#customerPaginationControls').empty();
+                $('#totalCustomersDisplay').text('0'); // Cập nhật về 0 nếu không có khách hàng
+                return;
+            }
+
+            customers.forEach(customer => {
+                // Thêm class 'text-danger fw-bold' cho cột Công nợ
+                // Chỉ áp dụng class nếu có công nợ (conno > 0)
+                const connoClass = (customer.conno && customer.conno > 0) ? 'text-danger fw-bold' : '';
+                const row = `
+            <tr>
+                <td>${customer.makh}</td>
+                <td>${customer.tenkh}</td>
+                <td>${customer.diachi_sdt || ''}</td>
+                <td>${formatCurrency(customer.tongtienhang, 0)}</td> // Đã sửa
+                <td>${formatCurrency(customer.tongchietkhau, 0)}</td> // Đã sửa
+                <td>${formatCurrency(customer.khhdathanhtoan, 0)}</td> // Đã sửa
+                <td class="${connoClass}">${formatCurrency(customer.conno, 0)}</td>    
+                <td>${customer.ghichu || ''}</td> 
+                <td>
+                    <button type="button" class="btn btn-warning btn-sm edit-customer-btn"
+                        data-makh="${customer.makh}"
+                        data-tenkh="${customer.tenkh}"
+                        data-diachisdt="${customer.diachi_sdt || ''}"
+                        data-ghichu="${customer.ghichu || ''}"
+                        data-bs-toggle="modal" data-bs-target="#customerModal">Sửa</button>
+                </td>
+            </tr>
+            `;
+                tableBody.append(row);
+            });
+
+            // Gọi hàm renderCustomerPaginationControls sau khi tải xong khách hàng
+            renderCustomerPaginationControls();
+
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            $('#customersTableBody').html('<tr><td colspan="10" class="text-danger text-center">Lỗi tải dữ liệu khách hàng.</td></tr>');
+            // Xóa phân trang nếu có lỗi
+            $('#customerPaginationControls').empty();
+            $('#totalCustomersDisplay').text('Lỗi'); // Hiển thị lỗi nếu không tải được
+        }
+    }
+
+    // Hàm renderPaginationControls đã được điều chỉnh cho khách hàng
+    function renderCustomerPaginationControls() {
+        const totalPages = Math.ceil(totalCustomers / customerItemsPerPage);
+        const paginationControls = $('#customerPaginationControls'); // ID mới cho phân trang khách hàng
+        paginationControls.empty(); // Xóa các nút cũ
+
+        if (totalPages <= 1) {
+            return; // Không cần phân trang nếu chỉ có 1 trang hoặc ít hơn
+        }
+
+        // Nút "Trước"
+        paginationControls.append(`<li class="page-item ${currentCustomerPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentCustomerPage - 1}">Trước</a></li>`);
+
+        // Logic để hiển thị các nút số trang (bao gồm dấu "...")
+        const pageRange = 5; // Số lượng trang hiển thị xung quanh trang hiện tại
+        let startPage = Math.max(1, currentCustomerPage - Math.floor(pageRange / 2));
+        let endPage = Math.min(totalPages, currentCustomerPage + Math.ceil(pageRange / 2) - 1);
+
+        // Điều chỉnh startPage và endPage để luôn có pageRange số trang nếu có đủ
+        if (endPage - startPage + 1 < pageRange) {
+            if (currentCustomerPage - startPage < Math.floor(pageRange / 2)) {
+                endPage = Math.min(totalPages, startPage + pageRange - 1);
+            } else if (endPage - currentCustomerPage < Math.ceil(pageRange / 2) - 1) {
+                startPage = Math.max(1, endPage - pageRange + 1);
+            }
+        }
+
+        // Luôn hiển thị trang đầu tiên
+        if (startPage > 1) {
+            paginationControls.append(`<li class="page-item ${1 === currentCustomerPage ? 'active' : ''}"><a class="page-link" href="#" data-page="1">1</a></li>`);
+            if (startPage > 2) {
+                paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+            }
+        }
+
+        // Hiển thị các trang trong phạm vi tính toán
+        for (let i = startPage; i <= endPage; i++) {
+            let activeClass = i === currentCustomerPage ? 'active' : '';
+            paginationControls.append(`<li class="page-item ${activeClass}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`);
+        }
+
+        // Luôn hiển thị trang cuối cùng
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+            }
+            paginationControls.append(`<li class="page-item ${totalPages === currentCustomerPage ? 'active' : ''}"><a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a></li>`);
+        }
+
+        // Nút "Sau"
+        paginationControls.append(`<li class="page-item ${currentCustomerPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentCustomerPage + 1}">Sau</a></li>`);
+
+        // Xử lý sự kiện click cho các nút phân trang
+        paginationControls.off('click', '.page-link').on('click', '.page-link', function (e) {
+            e.preventDefault();
+            const newPage = parseInt($(this).data('page'));
+            if (!isNaN(newPage) && newPage > 0 && newPage <= totalPages && newPage !== currentCustomerPage) {
+                currentCustomerPage = newPage; // Cập nhật trang hiện tại
+                fetchCustomers(currentCustomerPage, $('#customerSearchInput').val()); // Gọi lại fetchCustomers
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        fetchCustomers(); // Tải khách hàng ban đầu (sẽ tải trang 1 mặc định)
+
+        // Handle Add Customer Button click
+        $('#addCustomerBtn').on('click', function () {
+            $('#customerModalLabel').text('Thêm Khách hàng mới');
+            $('#customerForm')[0].reset(); // Clear form
+            $('#customerMakh').val(''); // Clear hidden ID
+        });
+
+        // Handle Edit Customer Button click (delegated event for dynamic rows)
+        $(document).on('click', '.edit-customer-btn', function () {
+            $('#customerModalLabel').text('Sửa Khách hàng');
+            $('#customerMakh').val($(this).data('makh'));
+            $('#customerTenkh').val($(this).data('tenkh'));
+            $('#customerDiachiSdt').val($(this).data('diachisdt'));
+            $('#customerGhichu').val($(this).data('ghichu'));
+        });
+
+        // Handle Form Submission
+        $('#customerForm').on('submit', async function (e) {
+            e.preventDefault();
+            const makh = $('#customerMakh').val();
+            const customerData = {
+                tenkh: $('#customerTenkh').val(),
+                diachi_sdt: $('#customerDiachiSdt').val(),
+                ghichu: $('#customerGhichu').val()
+            };
+
+            let url = '/customers/';
+            let method = 'POST';
+
+            if (makh) { // If makh exists, it's an update
+                url += makh; // Assuming API endpoint is /customers/{makh} for PUT
+                method = 'PUT';
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(customerData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    alert(`Lỗi: ${errorData.detail}`);
+                    return;
+                }
+
+                alert(`Khách hàng đã được ${makh ? 'cập nhật' : 'thêm mới'} thành công!`);
+                $('#customerModal').modal('hide'); // Hide the modal
+
+                // Sau khi thêm/sửa, gọi lại fetchCustomers với giá trị tìm kiếm và trang hiện tại
+                const currentSearchQuery = $('#customerSearchInput').val();
+                fetchCustomers(currentCustomerPage, currentSearchQuery); // Refresh the list with current search
+            } catch (error) {
+                console.error('Error submitting customer form:', error);
+                alert('Đã xảy ra lỗi. Vui lòng thử lại.');
+            }
+        });
+
+        // Handle search button click
+        $('#customerSearchBtn').on('click', function () {
+            currentCustomerPage = 1; // Reset về trang 1 khi tìm kiếm mới
+            const searchQuery = $('#customerSearchInput').val();
+            fetchCustomers(currentCustomerPage, searchQuery);
+        });
+
+        // Optional: Handle search input enter key press
+        $('#customerSearchInput').on('keypress', function (e) {
+            if (e.which === 13) { // Enter key
+                e.preventDefault(); // Prevent form submission if input is inside a form
+                currentCustomerPage = 1; // Reset về trang 1 khi tìm kiếm mới
+                const searchQuery = $('#customerSearchInput').val();
+                fetchCustomers(currentCustomerPage, searchQuery);
+            }
+        });
+    });
+</script>
+{% endblock %}
