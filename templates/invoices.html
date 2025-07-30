@@ -13,64 +13,38 @@
     <i class="fas fa-file-excel"></i> Xuất Excel
 </button>
 
-<div class="card">
+<div class="card mb-4">
     <div class="card-header">
-        <h5>Tìm Kiếm Hóa Đơn</h5>
+        Tìm kiếm Hóa đơn
     </div>
     <div class="card-body">
-        <form id="invoiceFilterForm">
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <label for="filterMahd" class="form-label">Mã HĐ:</label>
-                    <input type="text" class="form-control" id="filterMahd" placeholder="Nhập mã hóa đơn">
-                </div>
-                <div class="col-md-3">
-                    <label for="filterMakh" class="form-label">Khách hàng:</label>
-                    <select class="form-select" id="filterMakh">
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="filterNgaylapFrom" class="form-label">Từ ngày:</label>
-                    <div class="input-group">
-                        <input type="date" class="form-control" id="filterNgaylapFrom" placeholder="dd/mm/yyyy">
-                        <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="filterNgaylapTo" class="form-label">Đến ngày:</label>
-                    <div class="input-group">
-                        <input type="date" class="form-control" id="filterNgaylapTo" placeholder="dd/mm/yyyy">
-                        <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                    </div>
-                </div>
+        <form id="invoiceFilterForm" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="filterMahd" class="form-label">Mã HĐ:</label>
+                <input type="text" class="form-control" id="filterMahd" placeholder="Nhập mã hóa đơn">
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Trạng thái:</label>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input filter-trangthai-checkbox" type="checkbox" id="filterChuaTT"
-                        value="ChuaTT">
-                    <label class="form-check-label" for="filterChuaTT">Chưa thanh toán</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input filter-trangthai-checkbox" type="checkbox" id="filterDaTT"
-                        value="DaTT">
-                    <label class="form-check-label" for="filterDaTT">Đã thanh toán</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input filter-trangthai-checkbox" type="checkbox" id="filterHuy"
-                        value="Huy">
-                    <label class="form-check-label" for="filterHuy">Đã hủy</label>
-                </div>
+            <div class="col-md-3">
+                <label for="filterMakh" class="form-label">Khách hàng:</label>
+                <select class="form-control" id="filterMakh" style="width: 100%;">
+                    <option value="">-- Chọn khách hàng --</option>
+                </select>
             </div>
-
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">Tìm kiếm</button>
-                <button type="button" class="btn btn-secondary" id="clearFiltersBtn">Xóa bộ lọc</button>
+            <div class="col-md-2">
+                <label for="filterNgaylapFrom" class="form-label">Từ ngày:</label>
+                <input type="date" class="form-control" id="filterNgaylapFrom">
             </div>
+            <div class="col-md-2">
+                <label for="filterNgaylapTo" class="form-label">Đến ngày:</label>
+                <input type="date" class="form-control" id="filterNgaylapTo">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-info w-100">Tìm kiếm</button>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-secondary w-100" id="clearFiltersBtn">Xóa bộ lọc</button>
+            </div>
+        </form>
     </div>
-    </form>
-</div>
 </div>
 <div class="table-responsive">
     <table class="table table-hover table-striped">
@@ -231,9 +205,8 @@
     const itemsPerPage = 20;  // Số lượng mục trên mỗi trang (phải khớp với limit trong FastAPI)
     let totalInvoices = 0;    // Tổng số hóa đơn từ API (sẽ được cập nhật sau khi fetch)
     let currentFilters = {};
-    const checkboxDaTT = $('#filterStatusPaid');
-    const checkboxChuaTT = $('#filterStatusUnpaid');
-    const checkboxHuy = $('#filterStatusCancelled');
+
+
     function renderPaginationControls() {
         const totalPages = Math.ceil(totalInvoices / itemsPerPage);
         const paginationControls = $('#paginationControls');
@@ -305,83 +278,68 @@
         'Huy': 3,     // Ưu tiên thấp nhất (xuất hiện cuối cùng)
         // Bạn có thể thêm các trạng thái khác nếu có và gán số ưu tiên lớn hơn
     };
-    async function fetchInvoices() {
+
+    async function fetchInvoices(filters = {}) {
         try {
             const queryParams = new URLSearchParams();
-
-            // Lấy giá trị từ các trường input và Select2
-            const mahd = $('#filterMahd').val();
-            const makh = $('#filterMakh').val();
-            const ngaylap_from = $('#filterNgaylapFrom').val();
-            const ngaylap_to = $('#filterNgaylapTo').val();
-
-            if (mahd) queryParams.append('mahd', mahd);
-            if (makh) queryParams.append('makh', makh);
-            if (ngaylap_from) queryParams.append('ngaylap_from', ngaylap_from);
-            if (ngaylap_to) queryParams.append('ngaylap_to', ngaylap_to);
-
-            console.log("Status Checkboxes State:");
-            console.log("filterDaTT checked:", $('#filterDaTT').is(':checked'), "value:", $('#filterDaTT').val());
-            console.log("filterChuaTT checked:", $('#filterChuaTT').is(':checked'), "value:", $('#filterChuaTT').val());
-            console.log("filterHuy checked:", $('#filterHuy').is(':checked'), "value:", $('#filterHuy').val());
-            const selectedStatuses = [];
-            // Thay vì dùng biến global, hãy truy vấn lại từng checkbox
-            if ($('#filterDaTT').is(':checked')) { // Đảm bảo ID này đúng trong HTML
-                selectedStatuses.push($('#filterDaTT').val());
-            }
-            if ($('#filterChuaTT').is(':checked')) { // Đảm bảo ID này đúng trong HTML
-                selectedStatuses.push($('#filterChuaTT').val());
-            }
-            if ($('#filterHuy').is(':checked')) { // Đảm bảo ID này đúng trong HTML
-                selectedStatuses.push($('#filterHuy').val());
-            }
-
-            if (selectedStatuses.length > 0) {
-                // Backend của bạn mong đợi nhiều tham số 'trangthai' riêng biệt
-                selectedStatuses.forEach(status => {
-                    queryParams.append('trangthai', status);
-                });
-            }
-            // --- KẾT THÚC PHẦN SỬA ĐỔI ---
+            if (filters.mahd) queryParams.append('mahd', filters.mahd);
+            if (filters.makh) queryParams.append('makh', filters.makh);
+            if (filters.ngaylap_from) queryParams.append('ngaylap_from', filters.ngaylap_from);
+            if (filters.ngaylap_to) queryParams.append('ngaylap_to', filters.ngaylap_to);
 
             // Thêm tham số phân trang
             queryParams.append('skip', (currentPage - 1) * itemsPerPage);
             queryParams.append('limit', itemsPerPage);
 
+            // Backend của bạn đã có: .order_by(Invoice.ngaylap.desc())
+            // Nên KHÔNG CẦN thêm 'sort_by' và 'sort_order' vào queryParams ở đây nữa.
+            // Dữ liệu trả về từ API đã được sắp xếp theo ngày (mới nhất trước).
+
             const url = `/invoices/?${queryParams.toString()}`;
-            console.log("Fetching invoices with URL:", url); // Kiểm tra URL này trong Console/Network
+            console.log("Fetching invoices with URL:", url);
 
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error('Failed to fetch invoices');
             }
-            const data = await response.json();
-            let invoices = data.invoices;
-            totalInvoices = data.total_count;
+            const data = await response.json(); // Nhận đối tượng có total_count và invoices
+            let invoices = data.invoices; // Lấy mảng invoices từ thuộc tính 'invoices' của đối tượng data
+            totalInvoices = data.total_count; // Cập nhật tổng số hóa đơn cho phân trang
 
-            // Đảm bảo `statusSortPriority` được định nghĩa ở đâu đó trong scope của bạn.
+            // --- BẮT ĐẦU PHẦN SẮP XẾP CLIENT-SIDE THEO TRẠNG THÁI ---
+            // Sắp xếp mảng 'invoices' cục bộ
             invoices.sort((a, b) => {
+                // Lấy giá trị trạng thái từ mỗi hóa đơn
+                // Backend của bạn trả về string ví dụ: 'ChuaTT', 'DaTT', 'Huy', nên không cần .value
                 const statusA = a.trangthai;
                 const statusB = b.trangthai;
 
+                // Lấy giá trị ưu tiên từ đối tượng statusSortPriority
+                // Nếu trạng thái không có trong statusSortPriority, gán một số lớn để nó xuống cuối
                 const priorityA = statusSortPriority[statusA] || 99;
                 const priorityB = statusSortPriority[statusB] || 99;
 
+                // So sánh ưu tiên trạng thái
                 if (priorityA < priorityB) {
-                    return -1;
+                    return -1; // a có ưu tiên cao hơn (số nhỏ hơn), a đứng trước b
                 }
                 if (priorityA > priorityB) {
-                    return 1;
+                    return 1;  // b có ưu tiên cao hơn (số nhỏ hơn), b đứng trước a
                 }
+
+                // Nếu trạng thái của a và b giống nhau (hoặc không có trong map):
+                // Duy trì thứ tự ban đầu của chúng, tức là thứ tự đã được backend sắp xếp theo ngày.
                 return 0;
             });
+            // --- KẾT THÚC PHẦN SẮP XẾP CLIENT-SIDE THEO TRẠNG THÁI ---
 
             $('#totalInvoicesDisplay').text(`(${totalInvoices} hóa đơn)`);
             const tableBody = $('#invoicesTableBody');
-            tableBody.empty();
+            tableBody.empty(); // Xóa thông báo đang tải
 
             if (invoices.length === 0) {
                 tableBody.append('<tr><td colspan="11" class="text-center">Không tìm thấy hóa đơn nào phù hợp.</td></tr>');
+                // Nếu không có hóa đơn, xóa các nút phân trang
                 $('#paginationControls').empty();
                 return;
             }
@@ -392,49 +350,51 @@
                 let statusClass = '';
                 let displayStatusText = '';
 
-                switch (invoice.trangthai) {
-                    case 'DaTT':
+                // --- Cập nhật logic SWITCH để khớp với giá trị từ API ---
+                switch (invoice.trangthai) { // Sử dụng trực tiếp invoice.trangthai vì nó đã là chuỗi
+                    case 'DaTT': // Backend trả về "DaTT"
                         statusClass = 'text-success fw-bold';
-                        displayStatusText = 'DATT';
+                        displayStatusText = 'DATT'; // Dịch sang DATT
                         break;
-                    case 'Huy':
+                    case 'Huy': // Backend trả về "Huy"
                         statusClass = 'text-muted fst-italic';
-                        displayStatusText = 'HUY';
+                        displayStatusText = 'HUY'; // Dịch sang HUY
                         break;
-                    case 'ChuaTT':
-                    default:
+                    case 'ChuaTT': // Backend trả về "ChuaTT" (Đây cũng là default trong backend của bạn)
+                    default: // Nếu không khớp các trạng thái trên, coi là ChuaTT và gán mặc định
                         statusClass = 'text-warning fw-bold';
-                        displayStatusText = 'CHUATT';
+                        displayStatusText = 'CHUATT'; // Dịch sang CHUATT
                         break;
                 }
+                // --------------------------------------------------------
 
                 const row = `
-                <tr>
-                    <td>${invoice.mahd}</td>
-                    <td>${customerName}</td>
-                    <td>${invoice.ngaylap}</td>
-                    <td>${formatCurrency(invoice.congtienhang)}</td>
-                    <td>${formatCurrency(invoice.congchietkhau)}</td>
-                    <td>${formatCurrency(invoice.khhdathanhtoan)}</td>
-                    <td>
-                        <span class="${invoice.conno > 0 && invoice.trangthai !== 'Huy' ? 'text-danger fw-bold' : (invoice.conno <= 0 && invoice.trangthai !== 'Huy' ? 'text-success' : 'text-danger fw-bold')}">
-                            ${formatCurrency(invoice.conno)}
-                        </span>
-                    </td>
-                    <td><span class="${statusClass}">${displayStatusText}</span></td>
-                    <td>${invoice.nguoilap || ''}</td>
-                    <td>${invoice.ghichu || ''}</td>
-                    <td>
-                        <button type="button" class="btn btn-info btn-sm view-invoice-btn me-1" data-mahd="${invoice.mahd}">Xem</button>
-                        ${invoice.trangthai !== 'Huy' ?
+            <tr>
+                <td>${invoice.mahd}</td>
+                <td>${customerName}</td>
+                <td>${invoice.ngaylap}</td>
+                <td>${formatCurrency(invoice.congtienhang)}</td>
+                <td>${formatCurrency(invoice.congchietkhau)}</td>
+                <td>${formatCurrency(invoice.khhdathanhtoan)}</td>
+                <td>
+                    <span class="${invoice.conno > 0 && invoice.trangthai !== 'Huy' ? 'text-danger fw-bold' : (invoice.conno <= 0 && invoice.trangthai !== 'Huy' ? 'text-success' : 'text-danger fw-bold')}">
+                        ${formatCurrency(invoice.conno)}
+                    </span>
+                </td>
+                <td><span class="${statusClass}">${displayStatusText}</span></td>
+                <td>${invoice.nguoilap || ''}</td>
+                <td>${invoice.ghichu || ''}</td>
+                <td>
+                    <button type="button" class="btn btn-info btn-sm view-invoice-btn me-1" data-mahd="${invoice.mahd}">Xem</button>
+                    ${invoice.trangthai !== 'Huy' ? // Kiểm tra giá trị "Huy" để ẩn nút Hủy
                         `<button type="button" class="btn btn-danger btn-sm cancel-invoice-table-btn" data-mahd="${invoice.mahd}">Hủy</button>`
                         : ''}
-                    </td>
-                </tr>
+                </td>
+            </tr>
             `;
                 tableBody.append(row);
             }
-            renderPaginationControls();
+            renderPaginationControls(); // Gọi hàm render sau khi có dữ liệu
         } catch (error) {
             console.error('Lỗi khi lấy danh sách hóa đơn:', error);
             $('#invoicesTableBody').html('<tr><td colspan="11" class="text-danger text-center">Lỗi tải dữ liệu hóa đơn.</td></tr>');
@@ -443,10 +403,9 @@
                 title: 'Lỗi!',
                 text: 'Không thể tải danh sách hóa đơn. Vui lòng thử lại.'
             });
-            $('#paginationControls').empty();
+            $('#paginationControls').empty(); // Xóa các nút phân trang nếu có lỗi
         }
     }
-
 
     async function showInvoiceDetails(mahd) {
         try {
@@ -634,46 +593,25 @@
             const ngaylapFromFilter = $('#filterNgaylapFrom').val();
             const ngaylapToFilter = $('#filterNgaylapTo').val();
 
-            // Tạo một đối tượng URLSearchParams để chứa các tham số
-            const queryParams = new URLSearchParams(); // <-- Sử dụng URLSearchParams thay vì tạo object validFilters thủ công
-
+            // Tạo một đối tượng để chứa các tham số HỢP LỆ (không rỗng)
+            const validFilters = {};
             if (mahdFilter) {
-                queryParams.append('mahd', mahdFilter);
+                validFilters.mahd = mahdFilter;
             }
             if (makhFilter) {
-                queryParams.append('makh', makhFilter);
+                validFilters.makh = makhFilter;
             }
             if (ngaylapFromFilter) {
-                queryParams.append('ngaylap_from', ngaylapFromFilter);
+                validFilters.ngaylap_from = ngaylapFromFilter;
             }
             if (ngaylapToFilter) {
-                queryParams.append('ngaylap_to', ngaylapToFilter);
+                validFilters.ngaylap_to = ngaylapToFilter;
             }
 
-            // --- THÊM PHẦN XỬ LÝ TRẠNG THÁI ---
-            const selectedStatuses = []; // Khai báo mảng selectedStatuses
-            if (checkboxDaTT.is(':checked')) {
-                selectedStatuses.push(checkboxDaTT.val()); // Thêm "DaTT"
-            }
-            if (checkboxChuaTT.is(':checked')) {
-                selectedStatuses.push(checkboxChuaTT.val()); // Thêm "ChuaTT"
-            }
-            if (checkboxHuy.is(':checked')) {
-                selectedStatuses.push(checkboxHuy.val()); // Thêm "Huy"
-            }
+            // Tạo query string chỉ từ các tham số hợp lệ
+            const params = new URLSearchParams(validFilters).toString();
 
-            // Thêm các trạng thái đã chọn vào queryParams
-            if (selectedStatuses.length > 0) {
-                selectedStatuses.forEach(status => {
-                    queryParams.append('trangthai', status); // Mỗi trạng thái là một tham số 'trangthai'
-                });
-            }
-            // ------------------------------------
-
-            // Chuyển đổi queryParams thành chuỗi để gắn vào URL
-            const paramsString = queryParams.toString();
-
-            const apiEndpoint = `/invoices/export-excel${paramsString ? '?' + paramsString : ''}`;
+            const apiEndpoint = `/invoices/export-excel${params ? '?' + params : ''}`;
             console.log('Bước 2: Gửi yêu cầu fetch tới URL xuất Excel:', apiEndpoint);
 
             const response = await fetch(apiEndpoint);
@@ -698,6 +636,8 @@
                 return;
             }
 
+            // --- BẮT ĐẦU PHẦN BẠN CẦN THÊM VÀO ---
+
             // Bước 4: Lấy tên file từ header 'Content-Disposition'
             const contentDisposition = response.headers.get('Content-Disposition');
             let filename = `danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}.xlsx`; // Tên mặc định
@@ -720,6 +660,7 @@
                 }
             }
             console.log('Bước 4: Tên file được xác định:', filename);
+
 
             // Bước 5: Chuyển đổi phản hồi thành Blob (dữ liệu nhị phân)
             const blob = await response.blob();
@@ -754,6 +695,8 @@
                 confirmButtonText: 'Đóng'
             });
 
+            // --- KẾT THÚC PHẦN BẠN CẦN THÊM VÀO ---
+
         } catch (error) {
             console.error('Bước CUỐI: Đã xảy ra lỗi khi xuất Excel:', error);
             Swal.fire({
@@ -764,9 +707,9 @@
         }
     }
     $(document).ready(function () {
-        $('.filter-trangthai-checkbox').on('change', function () {
-            console.log("Checkbox trạng thái thay đổi. Hãy nhấn 'Tìm kiếm' để áp dụng bộ lọc.");
-        });
+        $('#printInvoiceBtn').on('click', printInvoiceDetails); // Đảm bảo printInvoiceDetails được định nghĩa
+
+        // Khởi tạo Select2 cho bộ lọc khách hàng
         $('#filterMakh').select2({
             placeholder: 'Chọn khách hàng...',
             allowClear: true,
@@ -792,76 +735,66 @@
                 },
                 cache: true
             },
-            minimumInputLength: 2 // Bắt đầu tìm kiếm sau khi nhập 2 ký tự
+            minimumInputLength: 2 // Bắt đầu tìm kiếm sau khi nhập 1 ký tự
         });
 
-        // --------------------------------------------------------------------
-        //  Xử lý sự kiện Tìm kiếm và Xóa bộ lọc
-        // --------------------------------------------------------------------
 
-        // Khi form tìm kiếm được submit (nút "Tìm kiếm" được nhấn)
+        // ====================================================================
+        // Xử lý sự kiện tìm kiếm và xóa bộ lọc
+        // ====================================================================
+
+        // Khi form tìm kiếm được submit
         $('#invoiceFilterForm').on('submit', function (e) {
             e.preventDefault(); // Ngăn chặn submit form truyền thống
 
-            currentPage = 1; // Luôn reset về trang 1 khi thực hiện tìm kiếm mới
-
-            // Gọi hàm fetchInvoices() KHÔNG ĐỐI SỐ.
-            // fetchInvoices sẽ tự động đọc tất cả các giá trị từ form và checkbox.
-            fetchInvoices();
+            const filters = {
+                mahd: $('#filterMahd').val(),
+                makh: $('#filterMakh').val(), // Select2 trả về id của option được chọn
+                ngaylap_from: $('#filterNgaylapFrom').val(),
+                ngaylap_to: $('#filterNgaylapTo').val()
+            };
+            fetchInvoices(filters); // Gọi lại hàm fetchInvoices với các bộ lọc
         });
 
         // Khi nút "Xóa bộ lọc" được click
         $('#clearFiltersBtn').on('click', function () {
-            // Đặt lại giá trị của tất cả các trường input và Select2
             $('#filterMahd').val('');
             $('#filterMakh').val(null).trigger('change'); // Xóa chọn Select2
             $('#filterNgaylapFrom').val('');
             $('#filterNgaylapTo').val('');
-
-            // Bỏ chọn tất cả các checkbox trạng thái (đảm bảo ID là đúng)
-            $('#filterDaTT').prop('checked', false);
-            $('#filterChuaTT').prop('checked', false);
-            $('#filterHuy').prop('checked', false);
-
-            currentPage = 1; // Đặt lại trang về 1
-            // Gọi hàm fetchInvoices() KHÔNG ĐỐI SỐ.
-            // fetchInvoices sẽ tự động đọc các giá trị đã reset.
-            fetchInvoices();
+            fetchInvoices(); // Tải lại danh sách hóa đơn không có bộ lọc
         });
 
-        fetchInvoices();
+        // Tải hóa đơn lần đầu khi trang được load
+        fetchInvoices(); // Đảm bảo hàm fetchInvoices() được định nghĩa ở trên!
 
-        $('#printInvoiceBtn').on('click', printInvoiceDetails);
-
+        // Xử lý nút "Xem" trên bảng danh sách
         $(document).on('click', '.view-invoice-btn', function () {
             const mahd = $(this).data('mahd');
             showInvoiceDetails(mahd); // Đảm bảo showInvoiceDetails() được định nghĩa
         });
 
-        // Xử lý nút "Chỉnh sửa" trong modal chi tiết hóa đơn
+        // Xử lý nút "Chỉnh sửa" trong modal chi tiết
         $('#editInvoiceBtn').on('click', function () {
             console.log("Click editInvoiceBtn. currentInvoiceDetails:", currentInvoiceDetails);
             if (currentInvoiceDetails && currentInvoiceDetails.mahd) {
-                // Chuyển hướng đến trang tạo/chỉnh sửa hóa đơn với mã hóa đơn
                 window.location.href = `/create-invoice-page?mahd=${currentInvoiceDetails.mahd}`;
             } else {
                 Swal.fire('Lỗi', 'Không có dữ liệu hóa đơn để chỉnh sửa.', 'error');
             }
         });
 
-        // Xử lý nút "Ghi nhận thanh toán" trong modal chi tiết hóa đơn
+        // Xử lý nút "Ghi nhận thanh toán" trong modal chi tiết
         $('#markPaidBtn').on('click', async function () {
             if (currentInvoiceForPay) {
                 try {
-                    // Lấy thông tin hóa đơn mới nhất để kiểm tra trạng thái
                     const response = await fetch(`/invoices/detail/${currentInvoiceForPay}`);
                     if (!response.ok) {
                         throw new Error('Failed to fetch invoice for payment');
                     }
                     const invoice = await response.json();
 
-                    // Kiểm tra các điều kiện để ghi nhận thanh toán
-                    if (invoice.trangthai === 'Huy') { // Đảm bảo so khớp với giá trị 'Huy' từ backend
+                    if (invoice.trangthai === 'CANCELLED') {
                         Swal.fire('Cảnh báo', 'Không thể ghi nhận thanh toán cho hóa đơn đã hủy.', 'warning');
                         return;
                     }
@@ -870,19 +803,16 @@
                         return;
                     }
 
-                    // Điền thông tin vào modal thanh toán
                     $('#payInvoiceMahd').text(invoice.mahd);
                     $('#payInvoiceHiddenMahd').val(invoice.mahd);
                     $('#currentInvoiceConno').text(formatCurrency(invoice.conno));
-                    // Đặt giá trị mặc định cho số tiền thanh toán là số tiền còn nợ
                     $('#paidAmount').val(invoice.conno || 0);
 
-                    // Ẩn modal chi tiết và hiện modal thanh toán
                     $('#invoiceDetailModal').modal('hide');
                     $('#markPaidModal').modal('show');
 
                 } catch (error) {
-                    console.error('Lỗi khi chuẩn bị modal thanh toán:', error);
+                    console.error('Error preparing payment modal:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Lỗi!',
@@ -928,7 +858,7 @@
                 $('#markPaidModal').modal('hide');
                 fetchInvoices(); // Tải lại danh sách hóa đơn để cập nhật trạng thái
             } catch (error) {
-                console.error('Lỗi khi gửi thanh toán:', error);
+                console.error('Error submitting payment:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Lỗi!',
@@ -937,14 +867,15 @@
             }
         });
 
-        // Gắn sự kiện click cho nút "Xuất Excel"
-        // (Đảm bảo ID 'exportExcelBtn' tồn tại trong HTML của bạn)
+        // THAY ĐỔI: Đảm bảo sử dụng ID đúng của nút Xuất Excel
         const exportButton = document.getElementById('exportExcelBtn');
 
+        // Kiểm tra xem nút có tồn tại không trước khi thêm event listener
         if (exportButton) {
             exportButton.addEventListener('click', exportInvoicesToExcel);
             console.log('Đã gắn sự kiện click cho nút Xuất Excel (ID: exportExcelBtn).');
         } else {
+            // Sửa lại console.error để phản ánh ID đúng mà bạn đang tìm kiếm
             console.error('Lỗi: Không tìm thấy nút Xuất Excel với ID "exportExcelBtn".');
         }
 
