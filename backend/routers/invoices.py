@@ -148,8 +148,9 @@ def read_invoices_route(
     makh: Optional[int] = Query(None, description="Lọc theo mã khách hàng"),
     ngaylap_from: Optional[date] = Query(None, description="Ngày lập từ (YYYY-MM-DD)"),
     ngaylap_to: Optional[date] = Query(None, description="Ngày lập đến (YYYY-MM-DD)"),
-    skip: int = 0, # Mặc định bắt đầu từ bản ghi đầu tiên
-    limit: int = 10, # Mặc định 10 bản ghi mỗi trang
+    trangthai: Optional[List[InvoiceStatus]] = Query(None, description="Lọc theo trạng thái hóa đơn (ChuaTT, DaTT, Huy). Có thể chọn nhiều."),
+    skip: int = 0,
+    limit: int = 10,
     db: Session = Depends(get_session)
 ):
     """Đọc danh sách hóa đơn với tùy chọn lọc và phân trang."""
@@ -178,21 +179,25 @@ def read_invoices_route(
     if ngaylap_to:
         conditions.append(Invoice.ngaylap <= ngaylap_to)
 
+    # --- BỔ SUNG LOGIC LỌC THEO TRẠNG THÁI ---
+    if trangthai:
+        # FastAPI tự động chuyển các chuỗi query param thành List[InvoiceStatus]
+        # (ví dụ: ['ChuaTT', 'DaTT'])
+        # Sử dụng Invoice.trangthai.in_(trangthai) để lọc nhiều trạng thái
+        conditions.append(Invoice.trangthai.in_(trangthai))
+    # --- KẾT THÚC BỔ SUNG ---
+
     if conditions:
         count_query = count_query.where(and_(*conditions))
         data_query = data_query.where(and_(*conditions))
 
-    # Lấy tổng số lượng bản ghi sau khi lọc
     total_count = db.exec(count_query).one() 
     
-    # Áp dụng phân trang cho truy vấn dữ liệu
     data_query = data_query.offset(skip).limit(limit)
 
-    # Thực thi truy vấn dữ liệu
     invoices = db.exec(data_query).all()
     
     return PaginatedInvoicesResponse(total_count=total_count, invoices=invoices)
-
 @router.get("/detail/{mahd}", response_model=InvoiceRead, summary="Read a single invoice by code")
 def read_invoice_route(mahd: str, db: Session = Depends(get_session)):
     """Đọc thông tin một hóa đơn cụ thể."""
@@ -225,18 +230,6 @@ def update_invoice_route(
                 detail="Không thể sửa hóa đơn đã hủy. Vui lòng tạo hóa đơn mới nếu cần."
             )
         
-        # Nếu hóa đơn đã thanh toán hoàn toàn và bạn muốn sửa, 
-        # hãy cân nhắc logic nghiệp vụ: có nên cho phép sửa không?
-        # Ví dụ: có thể cho phép sửa nếu số tiền trả lại khách hàng
-        # => nhưng trạng thái PAID sẽ thay đổi.
-        # Nếu bạn KHÔNG muốn cho phép sửa hóa đơn PAID, hãy bỏ comment dòng dưới:
-        # if db_invoice.trangthai == InvoiceStatus.PAID:
-        #     raise HTTPException(
-        #         status_code=status.HTTP_400_BAD_REQUEST,
-        #         detail=f"Không thể sửa hóa đơn ở trạng thái {db_invoice.trangthai}."
-        #     )
-
-
         old_makh = db_invoice.makh
         
         # LƯU TRỮ CÁC CHI TIẾT CŨ ĐỂ HOÀN LẠI TỒN KHO
@@ -409,17 +402,10 @@ def cancel_invoice_route(
     invoice.nguoi_huy = cancel_user
     invoice.updated_at = datetime.now() # Cập nhật thời gian cập nhật
 
-    # KHÔNG GÁN LẠI CÁC GIÁ TRỊ TIỀN TỆ VỀ 0 NỮA TRÊN HÓA ĐƠN KHI HỦY
-    # invoice.congtienhang = 0.0
-    # invoice.congchietkhau = 0.0
-    # invoice.khhdathanhtoan = 0.0
-    # invoice.conno = 0.0
 
     db.add(invoice)
     db.flush() # Flush để các thay đổi trên hóa đơn và tồn kho được ghi nhận
 
-    # Cập nhật tổng công nợ và các tổng tiền khác của khách hàng
-    # Hàm crud.update_customer_debt đã được sửa để bỏ qua hóa đơn CANCELLED khi tính tổng cho khách hàng
     crud.update_customer_debt(db, old_customer_id)
 
     db.commit() # Commit tất cả các thay đổi
@@ -478,13 +464,12 @@ async def export_invoices_to_excel(
     makh: Optional[int] = Query(None, description="Mã khách hàng để lọc"),
     ngaylap_from: Optional[date] = Query(None, description="Ngày lập từ (YYYY-MM-DD)"),
     ngaylap_to: Optional[date] = Query(None, description="Ngày lập đến (YYYY-MM-DD)"),
+    trangthai: Optional[List[InvoiceStatus]] = Query(None, description="Lọc theo trạng thái hóa đơn (ChuaTT, DaTT, Huy). Có thể chọn nhiều."),
     db: Session = Depends(get_session)
 ):
     """
     Xuất danh sách hóa đơn ra file Excel dựa trên các bộ lọc đã chọn.
-    Dữ liệu xuất ra sẽ bao gồm thông tin hóa đơn và các chi tiết sản phẩm liên quan.
     """
-    # 1. Xây dựng truy vấn để lấy dữ liệu hóa đơn (giống như trong read_invoices_route nhưng không có phân trang)
     query = select(Invoice).options(
         selectinload(Invoice.customer), 
         selectinload(Invoice.details).selectinload(InvoiceDetail.product)
@@ -499,6 +484,11 @@ async def export_invoices_to_excel(
         conditions.append(Invoice.ngaylap >= ngaylap_from)
     if ngaylap_to:
         conditions.append(Invoice.ngaylap <= ngaylap_to)
+    
+    # --- BỔ SUNG LOGIC LỌC THEO TRẠNG THÁI (CHO EXCEL EXPORT CŨNG CẦN) ---
+    if trangthai:
+        conditions.append(Invoice.trangthai.in_(trangthai))
+    # --- KẾT THÚC BỔ SUNG ---
 
     if conditions:
         query = query.where(and_(*conditions))
@@ -508,12 +498,10 @@ async def export_invoices_to_excel(
     if not invoices:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy hóa đơn nào phù hợp để xuất.")
 
-    # 2. Chuẩn bị dữ liệu cho DataFrame
     data_for_df = []
     for inv in invoices:
         customer_name = inv.customer.tenkh if inv.customer else 'N/A'
         
-        # Dòng chính cho hóa đơn
         invoice_row = {
             "Mã HD": inv.mahd,
             "Khách hàng": customer_name,
@@ -522,7 +510,7 @@ async def export_invoices_to_excel(
             "Tổng CK": inv.congchietkhau,
             "Đã Thanh toán (HD)": inv.khhdathanhtoan,
             "Chưa thanh toán (HD)": inv.conno,
-            "Trạng thái": inv.trangthai.value if inv.trangthai else '', # Đảm bảo lấy giá trị từ Enum
+            "Trạng thái": inv.trangthai.value if inv.trangthai else '',
             "Người lập": inv.nguoilap,
             "Ghi chú": inv.ghichu,
             "Ngày tạo bản ghi": inv.created_at.strftime("%Y-%m-%d %H:%M:%S") if inv.created_at else '',
@@ -532,15 +520,14 @@ async def export_invoices_to_excel(
         }
         data_for_df.append(invoice_row)
 
-        # Thêm các dòng chi tiết sản phẩm cho mỗi hóa đơn
         if inv.details:
             for i, detail in enumerate(inv.details):
                 product_name = detail.product.tensp if detail.product else 'Sản phẩm không xác định'
                 detail_row = {
-                    "Mã HD": "", # Để trống cho các dòng chi tiết
+                    "Mã HD": "",
                     "Khách hàng": "", 
                     "Ngày lập": "",
-                    "Tổng Tiền hàng": "", # Để trống cho các dòng chi tiết
+                    "Tổng Tiền hàng": "",
                     "Tổng CK": "",
                     "Đã Thanh toán (HD)": "",
                     "Chưa thanh toán (HD)": "",
@@ -548,10 +535,11 @@ async def export_invoices_to_excel(
                     "Người lập": "",
                     "Ghi chú": "",
                     "Ngày tạo bản ghi": "",
+                    "Ngày tạo bản ghi": "",
                     "Cập nhật cuối": "",
                     "Ngày hủy": "",
                     "Người hủy": "",
-                    "Sản phẩm": f" -- {product_name}", # Đánh dấu là chi tiết
+                    "Sản phẩm": f" -- {product_name}",
                     "ĐVT": detail.donvi,
                     "SL": detail.sl,
                     "Đơn giá": detail.dongia,
@@ -560,61 +548,46 @@ async def export_invoices_to_excel(
                 }
                 data_for_df.append(detail_row)
 
-    # 3. Tạo DataFrame và ghi ra Excel
     df = pd.DataFrame(data_for_df)
 
-    # Đảm bảo thứ tự cột mong muốn
-    # Các cột mặc định từ `invoice_row`
     invoice_cols = [
         "Mã HD", "Khách hàng", "Ngày lập", "Tổng Tiền hàng", "Tổng CK", 
         "Đã Thanh toán (HD)", "Chưa thanh toán (HD)", "Trạng thái", 
         "Người lập", "Ghi chú", "Ngày tạo bản ghi", "Cập nhật cuối", 
         "Ngày hủy", "Người hủy", "Mã HD thay thế"
     ]
-    # Các cột chi tiết sản phẩm
     detail_cols = [
         "Sản phẩm", "ĐVT", "SL", "Đơn giá", "CK (%)", "Thành tiền (SP)"
     ]
-    # Ghép lại thứ tự cột
     ordered_cols = invoice_cols + detail_cols
     
-    # Lọc bỏ các cột không có trong DataFrame hiện tại để tránh lỗi
     actual_cols_in_df = [col for col in ordered_cols if col in df.columns]
     df = df[actual_cols_in_df]
 
-
     output = BytesIO()
-    # Sử dụng engine 'xlsxwriter' hoặc 'openpyxl'
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Danh_sach_Hoa_don')
         
-        # Tùy chỉnh độ rộng cột để dễ đọc hơn
         workbook = writer.book
         worksheet = writer.sheets['Danh_sach_Hoa_don']
         
-        # Định nghĩa một số định dạng
-        currency_format = workbook.add_format({'num_format': '#,##0'}) # Định dạng tiền tệ
-        date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'}) # Định dạng ngày
-        datetime_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'}) # Định dạng ngày giờ
+        currency_format = workbook.add_format({'num_format': '#,##0'})
+        date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'})
+        datetime_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
 
-        # Thiết lập độ rộng cột và định dạng
         for i, col in enumerate(df.columns):
             max_len = max(df[col].astype(str).map(len).max(), len(col)) + 2
             worksheet.set_column(i, i, max_len)
             
-            # Áp dụng định dạng cho các cột số tiền
             if col in ["Tổng Tiền hàng", "Tổng CK", "Đã Thanh toán (HD)", "Chưa thanh toán (HD)", "Đơn giá", "Thành tiền (SP)"]:
                 worksheet.set_column(i, i, max_len, currency_format)
-            # Áp dụng định dạng cho các cột ngày
             elif col in ["Ngày lập", "Ngày hủy"]:
                 worksheet.set_column(i, i, max_len, date_format)
-            # Áp dụng định dạng cho các cột ngày giờ
             elif col in ["Ngày tạo bản ghi", "Cập nhật cuối"]:
                 worksheet.set_column(i, i, max_len, datetime_format)
 
     output.seek(0)
 
-    # 4. Trả về Response
     headers = {
         "Content-Disposition": f"attachment; filename=danh_sach_hoa_don_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
